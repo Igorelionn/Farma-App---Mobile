@@ -1,0 +1,330 @@
+[
+  {
+    "id": "1",
+    "number": "PED1730123456789",
+    "date": "2025-01-15T10:30:00.000Z",
+    "status": "delivered",
+    "items": [
+      {
+        "id": "item1",
+        "product": {
+          "id": "1",
+          "nome": "Dipirona Sódica 500mg",
+          "principioAtivo": "Dipirona Sódica",
+          "laboratorio": "EMS Genérico",
+          "preco": 8.50,
+          "apresentacao": "Caixa com 20 comprimidos",
+          "estoque": 250,
+          "categoria": "Genéricos",
+          "imagem": null,
+          "tarja": null,
+          "descricao": "Analgésico e antitérmico para dor e febre",
+          "disponivel": true,
+          "codigoBarras": "7891058001234",
+          "emPromocao": true,
+          "precoPromocional": 6.90
+        },
+        "quantity": 5,
+        "addedAt": "2025-01-15T10:00:00.000Z"
+      },
+      {
+        "id": "item2",
+        "product": {
+          "id": "2",
+          "nome": "Paracetamol 750mg",
+          "principioAtivo": "Paracetamol",
+          "laboratorio": "Medley Genérico",
+          "preco": 12.80,
+          "apresentacao": "Caixa com 20 comprimidos",
+          "estoque": 180,
+          "categoria": "Genéricos",
+          "imagem": null,
+          "tarja": null,
+          "descricao": "Analgésico e antitérmico de ação rápida",
+          "disponivel": true,
+          "codigoBarras": "7891234567890",
+          "emPromocao": false,
+          "precoPromocional": null
+        },
+        "quantity": 3,
+        "addedAt": "2025-01-15T10:05:00.000Z"
+      }
+    ],
+    "subtotal": 72.90,
+    "shipping": 30.00,
+    "discount": 0,
+    "total": 102.90,
+    "address": {
+      "id": "1",
+      "label": "Empresa - Principal",
+      "street": "Rua das Flores",
+      "number": "123",
+      "complement": "Sala 201",
+      "neighborhood": "Centro",
+      "city": "São Paulo",
+      "state": "SP",
+      "zipCode": "01234-567",
+      "isDefault": true
+    },
+    "paymentMethod": {
+      "id": "3",
+      "type": "pix",
+      "label": "PIX",
+      "description": "Pagamento instantâneo com desconto de 2%",
+      "installmentOptions": null,
+      "daysToExpire": null
+    },
+    "trackingCode": "BR123456789SP",
+    "estimatedDelivery": "2025-01-18T00:00:00.000Z",
+    "statusHistory": [
+      {
+        "status": "pending",
+        "date": "2025-01-15T10:30:00.000Z",
+        "description": "Pedido realizado"
+      },
+      {
+        "status": "processing",
+        "date": "2025-01-15T14:00:00.000Z",
+        "description": "Pedido em separação"
+      },
+      {
+        "status": "shipped",
+        "date": "2025-01-16T09:00:00.000Z",
+        "description": "Pedido enviado"
+      },
+      {
+        "status": "delivered",
+        "date": "2025-01-17T16:30:00.000Z",
+        "description": "Pedido entregue"
+      }
+    ]
+  },
+  {
+    "id": "2",
+    "number": "PED1730223456790",
+    "date": "2025-01-20T14:15:00.000Z",
+    "status": "shipped",
+    "items": [
+      {
+        "id": "item3",
+        "product": {
+          "id": "6",
+          "nome": "Soro Fisiológico 0,9% 500ml",
+          "principioAtivo": "Cloreto de Sódio",
+          "laboratorio": "JP Indústria Farmacêutica",
+          "preco": 4.50,
+          "apresentacao": "Frasco 500ml",
+          "estoque": 450,
+          "categoria": "Hospitalares",
+          "imagem": null,
+          "tarja": null,
+          "descricao": "Solução para uso hospitalar e nebulização",
+          "disponivel": true,
+          "codigoBarras": "7891111222333",
+          "emPromocao": false,
+          "precoPromocional": null
+        },
+        "quantity": 50,
+        "addedAt": "2025-01-20T14:00:00.000Z"
+      }
+    ],
+    "subtotal": 225.00,
+    "shipping": 30.00,
+    "discount": 0,
+    "total": 255.00,
+    "address": {
+      "id": "2",
+      "label": "Filial - Zona Sul",
+      "street": "Avenida Paulista",
+      "number": "1500",
+      "complement": null,
+      "neighborhood": "Bela Vista",
+      "city": "São Paulo",
+      "state": "SP",
+      "zipCode": "01310-100",
+      "isDefault": false
+    },
+    "paymentMethod": {
+      "id": "1",
+      "type": "boleto",
+      "label": "Boleto Bancário",
+      "description": "Vencimento em 7, 14, 21 ou 28 dias",
+      "installmentOptions": null,
+      "daysToExpire": 7
+    },
+    "trackingCode": "BR987654321SP",
+    "estimatedDelivery": "2025-01-23T00:00:00.000Z",
+    "statusHistory": [
+      {
+        "status": "pending",
+        "date": "2025-01-20T14:15:00.000Z",
+        "description": "Pedido realizado"
+      },
+      {
+        "status": "processing",
+        "date": "2025-01-20T16:00:00.000Z",
+        "description": "Pedido em separação"
+      },
+      {
+        "status": "shipped",
+        "date": "2025-01-21T10:00:00.000Z",
+        "description": "Pedido enviado"
+      }
+    ]
+  },
+  {
+    "id": "3",
+    "number": "PED1730323456791",
+    "date": "2025-01-22T09:45:00.000Z",
+    "status": "processing",
+    "items": [
+      {
+        "id": "item4",
+        "product": {
+          "id": "9",
+          "nome": "Omeprazol 20mg",
+          "principioAtivo": "Omeprazol",
+          "laboratorio": "EMS Genérico",
+          "preco": 14.50,
+          "apresentacao": "Caixa com 28 cápsulas",
+          "estoque": 220,
+          "categoria": "Genéricos",
+          "imagem": null,
+          "tarja": "vermelha",
+          "descricao": "Inibidor da bomba de prótons para úlceras e refluxo",
+          "disponivel": true,
+          "codigoBarras": "7891234888999",
+          "emPromocao": false,
+          "precoPromocional": null
+        },
+        "quantity": 10,
+        "addedAt": "2025-01-22T09:30:00.000Z"
+      },
+      {
+        "id": "item5",
+        "product": {
+          "id": "10",
+          "nome": "Losartana Potássica 50mg",
+          "principioAtivo": "Losartana Potássica",
+          "laboratorio": "Medley Genérico",
+          "preco": 16.80,
+          "apresentacao": "Caixa com 30 comprimidos",
+          "estoque": 180,
+          "categoria": "Genéricos",
+          "imagem": null,
+          "tarja": "vermelha",
+          "descricao": "Anti-hipertensivo para controle da pressão arterial",
+          "disponivel": true,
+          "codigoBarras": "7891234777888",
+          "emPromocao": false,
+          "precoPromocional": null
+        },
+        "quantity": 8,
+        "addedAt": "2025-01-22T09:35:00.000Z"
+      }
+    ],
+    "subtotal": 279.40,
+    "shipping": 30.00,
+    "discount": 0,
+    "total": 309.40,
+    "address": {
+      "id": "1",
+      "label": "Empresa - Principal",
+      "street": "Rua das Flores",
+      "number": "123",
+      "complement": "Sala 201",
+      "neighborhood": "Centro",
+      "city": "São Paulo",
+      "state": "SP",
+      "zipCode": "01234-567",
+      "isDefault": true
+    },
+    "paymentMethod": {
+      "id": "2",
+      "type": "creditCard",
+      "label": "Cartão de Crédito",
+      "description": "Parcelamento em até 3x sem juros",
+      "installmentOptions": [1, 2, 3],
+      "daysToExpire": null
+    },
+    "trackingCode": null,
+    "estimatedDelivery": "2025-01-25T00:00:00.000Z",
+    "statusHistory": [
+      {
+        "status": "pending",
+        "date": "2025-01-22T09:45:00.000Z",
+        "description": "Pedido realizado"
+      },
+      {
+        "status": "processing",
+        "date": "2025-01-22T11:00:00.000Z",
+        "description": "Pedido em separação"
+      }
+    ]
+  },
+  {
+    "id": "4",
+    "number": "PED1730423456792",
+    "date": "2025-01-23T16:20:00.000Z",
+    "status": "pending",
+    "items": [
+      {
+        "id": "item6",
+        "product": {
+          "id": "17",
+          "nome": "Ibuprofeno 600mg",
+          "principioAtivo": "Ibuprofeno",
+          "laboratorio": "EMS Genérico",
+          "preco": 19.90,
+          "apresentacao": "Caixa com 20 comprimidos",
+          "estoque": 165,
+          "categoria": "Genéricos",
+          "imagem": null,
+          "tarja": "vermelha",
+          "descricao": "Anti-inflamatório e analgésico",
+          "disponivel": true,
+          "codigoBarras": "7890000111222",
+          "emPromocao": true,
+          "precoPromocional": 16.90
+        },
+        "quantity": 12,
+        "addedAt": "2025-01-23T16:15:00.000Z"
+      }
+    ],
+    "subtotal": 202.80,
+    "shipping": 30.00,
+    "discount": 0,
+    "total": 232.80,
+    "address": {
+      "id": "1",
+      "label": "Empresa - Principal",
+      "street": "Rua das Flores",
+      "number": "123",
+      "complement": "Sala 201",
+      "neighborhood": "Centro",
+      "city": "São Paulo",
+      "state": "SP",
+      "zipCode": "01234-567",
+      "isDefault": true
+    },
+    "paymentMethod": {
+      "id": "4",
+      "type": "accountCredit",
+      "label": "Crédito Pré-Aprovado",
+      "description": "Use seu limite de crédito disponível",
+      "installmentOptions": null,
+      "daysToExpire": 30
+    },
+    "trackingCode": null,
+    "estimatedDelivery": "2025-01-26T00:00:00.000Z",
+    "statusHistory": [
+      {
+        "status": "pending",
+        "date": "2025-01-23T16:20:00.000Z",
+        "description": "Pedido realizado"
+      }
+    ]
+  }
+]
+
+

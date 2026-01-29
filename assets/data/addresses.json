@@ -1,0 +1,40 @@
+[
+  {
+    "id": "1",
+    "label": "Empresa - Principal",
+    "street": "Rua das Flores",
+    "number": "123",
+    "complement": "Sala 201",
+    "neighborhood": "Centro",
+    "city": "São Paulo",
+    "state": "SP",
+    "zipCode": "01234-567",
+    "isDefault": true
+  },
+  {
+    "id": "2",
+    "label": "Filial - Zona Sul",
+    "street": "Avenida Paulista",
+    "number": "1500",
+    "complement": null,
+    "neighborhood": "Bela Vista",
+    "city": "São Paulo",
+    "state": "SP",
+    "zipCode": "01310-100",
+    "isDefault": false
+  },
+  {
+    "id": "3",
+    "label": "Depósito",
+    "street": "Rua Industrial",
+    "number": "890",
+    "complement": "Galpão 5",
+    "neighborhood": "Distrito Industrial",
+    "city": "Guarulhos",
+    "state": "SP",
+    "zipCode": "07111-000",
+    "isDefault": false
+  }
+]
+
+

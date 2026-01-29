@@ -1,0 +1,47 @@
+[
+  {
+    "id": "1",
+    "nome": "Maria Silva",
+    "email": "maria@farmaciaexemplo.com.br",
+    "senha": "123456",
+    "empresa": "Farmácia Exemplo Ltda",
+    "cnpj": "12345678000190",
+    "tipo": "farmacia",
+    "telefone": "(11) 98765-4321",
+    "limiteCredito": 15000.00
+  },
+  {
+    "id": "2",
+    "nome": "João Santos",
+    "email": "joao@clinicasaude.com.br",
+    "senha": "123456",
+    "empresa": "Clínica Saúde & Vida",
+    "cnpj": "98765432000111",
+    "tipo": "clinica",
+    "telefone": "(11) 91234-5678",
+    "limiteCredito": 25000.00
+  },
+  {
+    "id": "3",
+    "nome": "Ana Paula Costa",
+    "email": "ana@drogariapopular.com.br",
+    "senha": "123456",
+    "empresa": "Drogaria Popular",
+    "cnpj": "11222333000144",
+    "tipo": "farmacia",
+    "telefone": "(21) 99876-5432",
+    "limiteCredito": 20000.00
+  },
+  {
+    "id": "4",
+    "nome": "Carlos Mendes",
+    "email": "carlos@hospitalcentral.com.br",
+    "senha": "123456",
+    "empresa": "Hospital Central",
+    "cnpj": "55666777000188",
+    "tipo": "clinica",
+    "telefone": "(11) 92345-6789",
+    "limiteCredito": 50000.00
+  }
+]
+

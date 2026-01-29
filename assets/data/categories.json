@@ -1,0 +1,44 @@
+[
+  {
+    "id": "1",
+    "nome": "Medicamentos",
+    "icone": "medication",
+    "descricao": "Remédios e medicamentos para todos os tipos de tratamento",
+    "produtoCount": 416
+  },
+  {
+    "id": "2",
+    "nome": "Material Hospitalar",
+    "icone": "healing",
+    "descricao": "Materiais médicos, curativos e insumos hospitalares",
+    "produtoCount": 273
+  },
+  {
+    "id": "3",
+    "nome": "Injetáveis",
+    "icone": "vaccines",
+    "descricao": "Soluções, soros e medicamentos injetáveis",
+    "produtoCount": 73
+  },
+  {
+    "id": "4",
+    "nome": "Higiene e Dermocosméticos",
+    "icone": "spa",
+    "descricao": "Produtos de higiene pessoal e cuidados com a pele",
+    "produtoCount": 25
+  },
+  {
+    "id": "5",
+    "nome": "Equipamentos e Nutrição",
+    "icone": "medical_services",
+    "descricao": "Equipamentos médicos, suplementos e nutrição",
+    "produtoCount": 24
+  },
+  {
+    "id": "6",
+    "nome": "Limpeza e Desinfecção",
+    "icone": "cleaning_services",
+    "descricao": "Produtos para limpeza e desinfecção hospitalar",
+    "produtoCount": 10
+  }
+]

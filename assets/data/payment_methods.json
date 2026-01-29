@@ -1,0 +1,36 @@
+[
+  {
+    "id": "1",
+    "type": "boleto",
+    "label": "Boleto Bancário",
+    "description": "Vencimento em 7, 14, 21 ou 28 dias",
+    "installmentOptions": null,
+    "daysToExpire": 7
+  },
+  {
+    "id": "2",
+    "type": "creditCard",
+    "label": "Cartão de Crédito",
+    "description": "Parcelamento em até 3x sem juros",
+    "installmentOptions": [1, 2, 3],
+    "daysToExpire": null
+  },
+  {
+    "id": "3",
+    "type": "pix",
+    "label": "PIX",
+    "description": "Pagamento instantâneo com desconto de 2%",
+    "installmentOptions": null,
+    "daysToExpire": null
+  },
+  {
+    "id": "4",
+    "type": "accountCredit",
+    "label": "Crédito Pré-Aprovado",
+    "description": "Use seu limite de crédito disponível",
+    "installmentOptions": null,
+    "daysToExpire": 30
+  }
+]
+
+
