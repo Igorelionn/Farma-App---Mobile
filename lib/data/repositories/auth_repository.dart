@@ -307,7 +307,7 @@ class AuthRepository {
     // O Supabase Auth sempre retorna sucesso para não expor emails cadastrados
     await _client.auth.resetPasswordForEmail(
       email,
-      redirectTo: 'https://suevit.app/reset-password',
+      redirectTo: 'com.suevit.distribuidora://reset-password',
     );
   }
 
