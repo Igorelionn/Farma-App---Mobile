@@ -48,8 +48,12 @@ class _AppWithAuthListenerState extends State<_AppWithAuthListener> {
     // Listener para deep links de recuperação de senha
     SupabaseService.client.auth.onAuthStateChange.listen((data) {
       final event = data.event;
+      
       if (event == AuthChangeEvent.passwordRecovery) {
-        _navigatorKey.currentState?.pushNamed('/reset-password');
+        // Aguarda um frame para garantir que o navigator está pronto
+        Future.delayed(const Duration(milliseconds: 500), () {
+          _navigatorKey.currentState?.pushNamed('/reset-password');
+        });
       }
     });
   }
