@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Abrindo app Suevit...</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: Helvetica, 'Helvetica Neue', Arial, sans-serif;
+      background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+      max-width: 440px;
+      width: 100%;
+      padding: 48px 40px;
+      text-align: center;
+    }
+    .logo {
+      margin-bottom: 32px;
+    }
+    .logo img {
+      max-width: 160px;
+      height: auto;
+    }
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid #f3f4f6;
+      border-top-color: #11F2D4;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 24px;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #1a1a1a;
+      margin-bottom: 12px;
+    }
+    p {
+      font-size: 15px;
+      color: #6B7280;
+      line-height: 1.7;
+      margin-bottom: 24px;
+    }
+    .manual-button {
+      display: none;
+      width: 100%;
+      padding: 14px;
+      font-size: 15px;
+      font-weight: 600;
+      color: #020B21;
+      background: linear-gradient(135deg, #11F2D4 0%, #0dd4b8 100%);
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      text-decoration: none;
+      box-shadow: 0 4px 12px rgba(17,242,212,0.2);
+    }
+    .manual-button.show {
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">
+      <img src="https://klepqdiqpochlkrfyapd.supabase.co/storage/v1/object/public/public-assets/logo.png" alt="Suevit">
+    </div>
+    <div class="spinner"></div>
+    <h1>Abrindo o app...</h1>
+    <p id="message">Por favor, aguarde enquanto abrimos o aplicativo Suevit.</p>
+    <a href="#" id="manualButton" class="manual-button">Abrir app manualmente</a>
+  </div>
+
+  <script>
+    // Pega o token da URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token') || urlParams.get('access_token');
+    const type = urlParams.get('type');
+    
+    // Constrói o deep link
+    const deepLink = `com.suevit.distribuidora://reset-password?token=${token}&type=${type}`;
+    const intentLink = `intent://reset-password?token=${token}&type=${type}#Intent;scheme=com.suevit.distribuidora;package=com.suevit.distribuidora;end`;
+    
+    // Função para tentar abrir o app
+    function openApp() {
+      // Tenta o deep link primeiro
+      window.location.href = deepLink;
+      
+      // Depois de 2 segundos, mostra botão manual se não abriu
+      setTimeout(() => {
+        document.getElementById('message').textContent = 'O app não abriu automaticamente? Clique no botão abaixo.';
+        document.getElementById('manualButton').classList.add('show');
+      }, 2000);
+    }
+    
+    // Configura o botão manual
+    document.getElementById('manualButton').href = intentLink;
+    
+    // Detecta se é Android
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    
+    if (isAndroid) {
+      // No Android, usa Intent
+      document.getElementById('manualButton').href = intentLink;
+      // Tenta abrir automaticamente após 500ms
+      setTimeout(openApp, 500);
+    } else {
+      // Em outros dispositivos, mostra mensagem
+      document.getElementById('message').textContent = 'Para redefinir sua senha, abra o aplicativo Suevit no seu dispositivo móvel.';
+      document.getElementById('manualButton').textContent = 'Tentar abrir app';
+      document.getElementById('manualButton').classList.add('show');
+      document.getElementById('manualButton').href = deepLink;
+      document.querySelector('.spinner').style.display = 'none';
+    }
+  </script>
+</body>
+</html>
