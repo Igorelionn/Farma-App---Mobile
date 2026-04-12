@@ -1,5 +1,4 @@
 import 'package:equatable/equatable.dart';
-import 'package:flutter/material.dart';
 
 class Category extends Equatable {
   final String id;
@@ -20,9 +19,9 @@ class Category extends Equatable {
     return Category(
       id: json['id'] as String,
       nome: json['nome'] as String,
-      icone: json['icone'] as String,
+      icone: json['icone'] as String? ?? 'category',
       descricao: json['descricao'] as String?,
-      produtoCount: json['produtoCount'] as int?,
+      produtoCount: json['produto_count'] as int? ?? json['produtoCount'] as int?,
     );
   }
   
@@ -32,30 +31,10 @@ class Category extends Equatable {
       'nome': nome,
       'icone': icone,
       'descricao': descricao,
-      'produtoCount': produtoCount,
+      'produto_count': produtoCount,
     };
-  }
-  
-  IconData getIconData() {
-    switch (icone) {
-      case 'medication':
-        return Icons.medication;
-      case 'science':
-        return Icons.science;
-      case 'local_hospital':
-        return Icons.local_hospital;
-      case 'medical_services':
-        return Icons.medical_services;
-      case 'healing':
-        return Icons.healing;
-      case 'spa':
-        return Icons.spa;
-      default:
-        return Icons.category;
-    }
   }
   
   @override
   List<Object?> get props => [id, nome, icone, descricao, produtoCount];
 }
-

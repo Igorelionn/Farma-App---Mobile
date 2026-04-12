@@ -108,28 +108,28 @@ class AppTextStyles {
   );
   
   // Special
-  static TextStyle priceMain = GoogleFonts.roboto(
+  static TextStyle priceMain = GoogleFonts.urbanist(
     fontSize: 24,
     fontWeight: FontWeight.bold,
     color: AppColors.primary,
     height: 1.2,
   );
   
-  static TextStyle priceSmall = GoogleFonts.roboto(
+  static TextStyle priceSmall = GoogleFonts.urbanist(
     fontSize: 18,
     fontWeight: FontWeight.bold,
     color: AppColors.primary,
     height: 1.2,
   );
   
-  static TextStyle caption = GoogleFonts.roboto(
+  static TextStyle caption = GoogleFonts.urbanist(
     fontSize: 12,
     fontWeight: FontWeight.normal,
     color: AppColors.textTertiary,
     height: 1.4,
   );
   
-  static TextStyle overline = GoogleFonts.roboto(
+  static TextStyle overline = GoogleFonts.urbanist(
     fontSize: 10,
     fontWeight: FontWeight.w600,
     color: AppColors.textTertiary,
@@ -137,4 +137,5 @@ class AppTextStyles {
     letterSpacing: 1.5,
   );
 }
+
 

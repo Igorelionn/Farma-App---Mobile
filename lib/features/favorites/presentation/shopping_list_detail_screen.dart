@@ -119,7 +119,7 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
                               );
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  content: Text('${product.nome} adicionado ao carrinho'),
+                                  content: Text('${product.nome} adicionado à cesta'),
                                   duration: const Duration(seconds: 2),
                                 ),
                               );
@@ -144,7 +144,7 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
                       ),
                       child: SafeArea(
                         child: CustomButton(
-                          text: 'Adicionar Todos ao Carrinho',
+                          text: 'Adicionar Todos à Cesta',
                           onPressed: _addAllToCart,
                           width: double.infinity,
                           icon: Icons.shopping_cart,
@@ -189,7 +189,7 @@ class _ShoppingListDetailScreenState extends State<ShoppingListDetailScreen> {
     
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('${_products.length} produtos adicionados ao carrinho'),
+        content: Text('${_products.length} produtos adicionados à cesta'),
         duration: const Duration(seconds: 2),
       ),
     );

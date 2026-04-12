@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'core/services/supabase_service.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/bloc/auth_bloc.dart';
+import 'features/auth/bloc/auth_event.dart';
+import 'features/auth/bloc/auth_state.dart';
 import 'features/auth/presentation/splash_screen.dart';
 import 'features/auth/presentation/login_screen.dart';
+import 'features/auth/presentation/register_screen.dart';
+import 'features/auth/presentation/pending_approval_screen.dart';
+import 'features/auth/presentation/register_success_screen.dart';
+import 'features/auth/presentation/reset_password_screen.dart';
 import 'features/catalog/bloc/catalog_bloc.dart';
 import 'features/catalog/presentation/home_screen.dart';
 import 'features/cart/bloc/cart_bloc.dart';
@@ -21,34 +28,83 @@ import 'data/repositories/favorites_repository.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final prefs = await SharedPreferences.getInstance();
-  
-  runApp(MyApp(prefs: prefs));
+  await SupabaseService.initialize();
+  runApp(const MyApp());
+}
+
+class _AppWithAuthListener extends StatefulWidget {
+  @override
+  State<_AppWithAuthListener> createState() => _AppWithAuthListenerState();
+}
+
+class _AppWithAuthListenerState extends State<_AppWithAuthListener> {
+  final _navigatorKey = GlobalKey<NavigatorState>();
+
+  @override
+  void initState() {
+    super.initState();
+    
+    // Listener para deep links de recuperação de senha
+    SupabaseService.client.auth.onAuthStateChange.listen((data) {
+      final event = data.event;
+      if (event == AuthChangeEvent.passwordRecovery) {
+        _navigatorKey.currentState?.pushNamed('/reset-password');
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocListener<AuthBloc, AuthState>(
+      listenWhen: (previous, current) =>
+          previous is! AuthAuthenticated && current is AuthAuthenticated,
+      listener: (context, state) {
+        if (state is AuthAuthenticated) {
+          context.read<CartBloc>().add(LoadCart());
+          context.read<OrdersBloc>().add(LoadOrders());
+          context.read<FavoritesBloc>().add(LoadFavorites());
+        }
+      },
+      child: MaterialApp(
+        navigatorKey: _navigatorKey,
+        title: 'Suevit',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.lightTheme,
+        home: const SplashScreen(),
+        routes: {
+          '/login': (context) => const LoginScreen(),
+          '/register': (context) => const RegisterScreen(),
+          '/register-success': (context) => const RegisterSuccessScreen(),
+          '/pending-approval': (context) => const PendingApprovalScreen(),
+          '/home': (context) => const HomeScreen(),
+          '/reset-password': (context) => const ResetPasswordScreen(),
+        },
+      ),
+    );
+  }
 }
 
 class MyApp extends StatelessWidget {
-  final SharedPreferences prefs;
-  
-  const MyApp({super.key, required this.prefs});
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MultiRepositoryProvider(
       providers: [
         RepositoryProvider(
-          create: (context) => AuthRepository(prefs: prefs),
+          create: (context) => AuthRepository(),
         ),
         RepositoryProvider(
           create: (context) => ProductRepository(),
         ),
         RepositoryProvider(
-          create: (context) => CartRepository(prefs: prefs),
+          create: (context) => CartRepository(),
         ),
         RepositoryProvider(
-          create: (context) => OrderRepository(prefs: prefs),
+          create: (context) => OrderRepository(),
         ),
         RepositoryProvider(
-          create: (context) => FavoritesRepository(prefs: prefs),
+          create: (context) => FavoritesRepository(),
         ),
       ],
       child: MultiBlocProvider(
@@ -56,7 +112,7 @@ class MyApp extends StatelessWidget {
           BlocProvider(
             create: (context) => AuthBloc(
               authRepository: context.read<AuthRepository>(),
-            ),
+            )..add(AuthCheckRequested()),
           ),
           BlocProvider(
             create: (context) => CatalogBloc(
@@ -66,31 +122,21 @@ class MyApp extends StatelessWidget {
           BlocProvider(
             create: (context) => CartBloc(
               cartRepository: context.read<CartRepository>(),
-            )..add(LoadCart()),
+            ),
           ),
           BlocProvider(
             create: (context) => OrdersBloc(
               orderRepository: context.read<OrderRepository>(),
-            )..add(LoadOrders()),
+            ),
           ),
           BlocProvider(
             create: (context) => FavoritesBloc(
               favoritesRepository: context.read<FavoritesRepository>(),
-            )..add(LoadFavorites()),
+            ),
           ),
         ],
-        child: MaterialApp(
-          title: 'Suevit',
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.lightTheme,
-          home: const SplashScreen(),
-          routes: {
-            '/login': (context) => const LoginScreen(),
-            '/home': (context) => const HomeScreen(),
-          },
-        ),
+        child: _AppWithAuthListener(),
       ),
     );
   }
 }
-

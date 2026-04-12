@@ -1,186 +1,177 @@
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/shopping_list.dart';
+import '../../core/services/supabase_service.dart';
 
 class FavoritesRepository {
-  final SharedPreferences prefs;
-  static const String _keyFavorites = 'favorite_products';
-  static const String _keyLists = 'shopping_lists';
-  
-  FavoritesRepository({required this.prefs});
+  SupabaseClient get _client => SupabaseService.client;
+  String? get _userId => SupabaseService.currentUserId;
   
   // ===== FAVORITOS =====
   
-  // Carregar favoritos
   Future<List<String>> getFavorites() async {
-    try {
-      final String? favoritesJson = prefs.getString(_keyFavorites);
-      if (favoritesJson == null || favoritesJson.isEmpty) {
-        return [];
-      }
-      return List<String>.from(json.decode(favoritesJson));
-    } catch (e) {
-      return [];
-    }
+    if (_userId == null) return [];
+
+    final response = await _client.from('favorites')
+        .select('product_id')
+        .eq('user_id', _userId!);
+    
+    return (response as List)
+        .map((json) => json['product_id'] as String)
+        .toList();
   }
   
-  // Adicionar aos favoritos
   Future<List<String>> addToFavorites(String productId) async {
-    final favorites = await getFavorites();
-    if (!favorites.contains(productId)) {
-      favorites.add(productId);
-      await _saveFavorites(favorites);
-    }
-    return favorites;
+    if (_userId == null) throw Exception('Usuário não autenticado');
+
+    await _client.from('favorites').upsert({
+      'user_id': _userId,
+      'product_id': productId,
+    }, onConflict: 'user_id,product_id');
+    
+    return await getFavorites();
   }
   
-  // Remover dos favoritos
   Future<List<String>> removeFromFavorites(String productId) async {
-    final favorites = await getFavorites();
-    favorites.remove(productId);
-    await _saveFavorites(favorites);
-    return favorites;
+    if (_userId == null) throw Exception('Usuário não autenticado');
+
+    await _client.from('favorites')
+        .delete()
+        .eq('user_id', _userId!)
+        .eq('product_id', productId);
+    
+    return await getFavorites();
   }
   
-  // Toggle favorito
   Future<List<String>> toggleFavorite(String productId) async {
-    final favorites = await getFavorites();
-    if (favorites.contains(productId)) {
-      favorites.remove(productId);
+    if (_userId == null) throw Exception('Usuário não autenticado');
+
+    final existing = await _client.from('favorites')
+        .select()
+        .eq('user_id', _userId!)
+        .eq('product_id', productId)
+        .maybeSingle();
+    
+    if (existing != null) {
+      return await removeFromFavorites(productId);
     } else {
-      favorites.add(productId);
+      return await addToFavorites(productId);
     }
-    await _saveFavorites(favorites);
-    return favorites;
   }
   
-  // Verificar se é favorito
   Future<bool> isFavorite(String productId) async {
-    final favorites = await getFavorites();
-    return favorites.contains(productId);
-  }
-  
-  // Salvar favoritos
-  Future<void> _saveFavorites(List<String> favorites) async {
-    final favoritesJson = json.encode(favorites);
-    await prefs.setString(_keyFavorites, favoritesJson);
+    if (_userId == null) return false;
+
+    final response = await _client.from('favorites')
+        .select()
+        .eq('user_id', _userId!)
+        .eq('product_id', productId)
+        .maybeSingle();
+    
+    return response != null;
   }
   
   // ===== LISTAS DE COMPRAS =====
   
-  // Carregar listas
   Future<List<ShoppingList>> getShoppingLists() async {
-    try {
-      final String? listsJson = prefs.getString(_keyLists);
-      if (listsJson == null || listsJson.isEmpty) {
-        return [];
-      }
-      
-      final List<dynamic> listsList = json.decode(listsJson);
-      return listsList
-          .map((list) => ShoppingList.fromJson(list as Map<String, dynamic>))
-          .toList();
-    } catch (e) {
-      return [];
-    }
+    if (_userId == null) return [];
+
+    final response = await _client.from('shopping_lists')
+        .select('*, shopping_list_items(product_id)')
+        .eq('user_id', _userId!)
+        .order('created_at', ascending: false);
+    
+    return (response as List)
+        .map((json) => ShoppingList.fromJson(json as Map<String, dynamic>))
+        .toList();
   }
   
-  // Salvar listas
-  Future<void> _saveLists(List<ShoppingList> lists) async {
-    final listsJson = json.encode(lists.map((list) => list.toJson()).toList());
-    await prefs.setString(_keyLists, listsJson);
-  }
-  
-  // Criar lista
   Future<ShoppingList> createList(String name) async {
-    final lists = await getShoppingLists();
+    if (_userId == null) throw Exception('Usuário não autenticado');
+
+    final response = await _client.from('shopping_lists')
+        .insert({
+          'user_id': _userId,
+          'name': name,
+        })
+        .select('*, shopping_list_items(product_id)')
+        .single();
     
-    final newList = ShoppingList(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      name: name,
-      createdAt: DateTime.now(),
-      productIds: const [],
-    );
-    
-    lists.add(newList);
-    await _saveLists(lists);
-    return newList;
+    return ShoppingList.fromJson(response);
   }
   
-  // Atualizar lista
   Future<ShoppingList> updateList(ShoppingList updatedList) async {
-    final lists = await getShoppingLists();
-    final index = lists.indexWhere((list) => list.id == updatedList.id);
-    
-    if (index != -1) {
-      lists[index] = updatedList.copyWith(updatedAt: DateTime.now());
-      await _saveLists(lists);
-      return lists[index];
-    }
-    
-    throw Exception('Lista não encontrada');
+    if (_userId == null) throw Exception('Usuário não autenticado');
+    final response = await _client.from('shopping_lists')
+        .update({'name': updatedList.name})
+        .eq('id', updatedList.id)
+        .eq('user_id', _userId!)
+        .select('*, shopping_list_items(product_id)')
+        .single();
+
+    return ShoppingList.fromJson(response);
   }
-  
-  // Deletar lista
+
   Future<void> deleteList(String listId) async {
-    final lists = await getShoppingLists();
-    lists.removeWhere((list) => list.id == listId);
-    await _saveLists(lists);
+    if (_userId == null) throw Exception('Usuário não autenticado');
+    await _client.from('shopping_lists')
+        .delete()
+        .eq('id', listId)
+        .eq('user_id', _userId!);
   }
-  
-  // Adicionar produto à lista
+
   Future<ShoppingList> addProductToList(String listId, String productId) async {
-    final lists = await getShoppingLists();
-    final index = lists.indexWhere((list) => list.id == listId);
+    if (_userId == null) throw Exception('Usuário não autenticado');
+    // Verifica propriedade da lista antes de inserir
+    final listOwner = await _client.from('shopping_lists')
+        .select('id')
+        .eq('id', listId)
+        .eq('user_id', _userId!)
+        .maybeSingle();
+    if (listOwner == null) throw Exception('Lista não encontrada');
+
+    await _client.from('shopping_list_items').upsert({
+      'list_id': listId,
+      'product_id': productId,
+    }, onConflict: 'list_id,product_id');
     
-    if (index != -1) {
-      final list = lists[index];
-      if (!list.productIds.contains(productId)) {
-        final updatedList = list.copyWith(
-          productIds: [...list.productIds, productId],
-          updatedAt: DateTime.now(),
-        );
-        lists[index] = updatedList;
-        await _saveLists(lists);
-        return updatedList;
-      }
-      return list;
-    }
+    final response = await _client.from('shopping_lists')
+        .select('*, shopping_list_items(product_id)')
+        .eq('id', listId)
+        .single();
     
-    throw Exception('Lista não encontrada');
+    return ShoppingList.fromJson(response);
   }
   
-  // Remover produto da lista
   Future<ShoppingList> removeProductFromList(String listId, String productId) async {
-    final lists = await getShoppingLists();
-    final index = lists.indexWhere((list) => list.id == listId);
+    if (_userId == null) throw Exception('Usuário não autenticado');
+    // Garante que a lista pertence ao usuário antes de remover
+    final listOwner = await _client.from('shopping_lists')
+        .select('id')
+        .eq('id', listId)
+        .eq('user_id', _userId!)
+        .maybeSingle();
+    if (listOwner == null) throw Exception('Lista não encontrada');
+
+    await _client.from('shopping_list_items')
+        .delete()
+        .eq('list_id', listId)
+        .eq('product_id', productId);
     
-    if (index != -1) {
-      final list = lists[index];
-      final updatedProductIds = List<String>.from(list.productIds);
-      updatedProductIds.remove(productId);
-      
-      final updatedList = list.copyWith(
-        productIds: updatedProductIds,
-        updatedAt: DateTime.now(),
-      );
-      lists[index] = updatedList;
-      await _saveLists(lists);
-      return updatedList;
-    }
+    final response = await _client.from('shopping_lists')
+        .select('*, shopping_list_items(product_id)')
+        .eq('id', listId)
+        .single();
     
-    throw Exception('Lista não encontrada');
+    return ShoppingList.fromJson(response);
   }
   
-  // Obter lista por ID
   Future<ShoppingList?> getListById(String listId) async {
-    final lists = await getShoppingLists();
-    try {
-      return lists.firstWhere((list) => list.id == listId);
-    } catch (e) {
-      return null;
-    }
+    final response = await _client.from('shopping_lists')
+        .select('*, shopping_list_items(product_id)')
+        .eq('id', listId)
+        .maybeSingle();
+
+    if (response == null) return null;
+    return ShoppingList.fromJson(response);
   }
 }
-
-

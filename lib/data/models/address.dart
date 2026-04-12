@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 
 class Address extends Equatable {
   final String id;
+  final String? userId;
   final String label;
   final String street;
   final String number;
@@ -14,6 +15,7 @@ class Address extends Equatable {
   
   const Address({
     required this.id,
+    this.userId,
     required this.label,
     required this.street,
     required this.number,
@@ -35,6 +37,7 @@ class Address extends Equatable {
   factory Address.fromJson(Map<String, dynamic> json) {
     return Address(
       id: json['id'] as String,
+      userId: json['user_id'] as String?,
       label: json['label'] as String,
       street: json['street'] as String,
       number: json['number'] as String,
@@ -42,14 +45,14 @@ class Address extends Equatable {
       neighborhood: json['neighborhood'] as String,
       city: json['city'] as String,
       state: json['state'] as String,
-      zipCode: json['zipCode'] as String,
-      isDefault: json['isDefault'] as bool? ?? false,
+      zipCode: json['zip_code'] as String? ?? json['zipCode'] as String? ?? '',
+      isDefault: json['is_default'] as bool? ?? json['isDefault'] as bool? ?? false,
     );
   }
   
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
+      'user_id': userId,
       'label': label,
       'street': street,
       'number': number,
@@ -57,16 +60,14 @@ class Address extends Equatable {
       'neighborhood': neighborhood,
       'city': city,
       'state': state,
-      'zipCode': zipCode,
-      'isDefault': isDefault,
+      'zip_code': zipCode,
+      'is_default': isDefault,
     };
   }
   
   @override
   List<Object?> get props => [
-    id, label, street, number, complement, 
+    id, userId, label, street, number, complement, 
     neighborhood, city, state, zipCode, isDefault,
   ];
 }
-
-

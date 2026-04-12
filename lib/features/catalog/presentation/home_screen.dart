@@ -6,6 +6,7 @@ import '../../../core/widgets/loading_indicator.dart';
 import '../../../core/widgets/error_widget.dart';
 import '../../../core/widgets/svg_icon.dart';
 import '../../../core/widgets/morph_dock.dart';
+import '../../../core/widgets/cart_notification_provider.dart';
 import '../../../data/models/user.dart';
 import '../../auth/bloc/auth_bloc.dart';
 import '../../auth/bloc/auth_state.dart';
@@ -26,6 +27,11 @@ import '../widgets/animated_search_bar.dart';
 import '../widgets/home_banners.dart';
 import 'product_list_screen.dart';
 import 'product_details_screen.dart';
+import 'categories_screen.dart';
+import '../../profile/presentation/settings_screen.dart';
+import '../../profile/presentation/help_screen.dart';
+import '../../profile/presentation/about_screen.dart';
+import '../../profile/presentation/addresses_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -35,7 +41,10 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   int _selectedIndex = 0;
+  bool _showNavNotification = false;
+  String _notificationText = '';
 
   @override
   void initState() {
@@ -50,35 +59,50 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  String _getGreeting() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) {
-      return 'Bom dia';
-    } else if (hour < 18) {
-      return 'Boa tarde';
-    } else {
-      return 'Boa noite';
-    }
+  void _showCartNotification(String productName) {
+    setState(() {
+      _showNavNotification = true;
+      _notificationText = productName;
+    });
+
+    Future.delayed(const Duration(milliseconds: 3000), () {
+      if (mounted) {
+        setState(() {
+          _showNavNotification = false;
+        });
+      }
+    });
   }
 
-  // Helper para navegar garantindo acesso aos Blocs
-  void _navigateToProductList({String? category, String? searchQuery}) {
-    Navigator.push(
+  String _getGreetingEmoji() {
+    return '👋';
+  }
+
+  void _navigateToProductList({String? categoryId, String? categoryName, String? searchQuery}) async {
+    await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (ctx) => BlocProvider.value(
-          value: context.read<CatalogBloc>(),
+        builder: (ctx) => MultiBlocProvider(
+          providers: [
+            BlocProvider.value(value: context.read<CatalogBloc>()),
+            BlocProvider.value(value: context.read<CartBloc>()),
+            BlocProvider.value(value: context.read<FavoritesBloc>()),
+          ],
           child: ProductListScreen(
-            category: category,
+            categoryId: categoryId,
+            categoryName: categoryName,
             searchQuery: searchQuery,
           ),
         ),
       ),
     );
+    if (mounted) {
+      context.read<CatalogBloc>().add(LoadProducts());
+    }
   }
 
-  void _navigateToProductDetails(String productId) {
-    Navigator.push(
+  void _navigateToProductDetails(String productId) async {
+    await Navigator.push(
       context,
       MaterialPageRoute(
         builder: (ctx) => MultiBlocProvider(
@@ -91,119 +115,128 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
+    if (mounted) {
+      context.read<CatalogBloc>().add(LoadProducts());
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        scrolledUnderElevation: 0,
-        backgroundColor: Colors.transparent, // Fundo transparente para o AppBar padrão
-        elevation: 0,
-        toolbarHeight: 100, // Aumenta a altura do toolbar
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(
-              bottom: Radius.circular(32), // Arredondamento inferior
-            ),
-            // Sombra removida
-          ),
+      key: _scaffoldKey,
+      backgroundColor: Colors.white,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(100),
+        child: Container(
+          color: Colors.white,
           child: SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  Expanded(
-                    child: BlocBuilder<AuthBloc, AuthState>(
-                      builder: (context, state) {
-                        String greeting;
-                        String userName = 'Convidado';
-                        
-                        if (state is AuthAuthenticated) {
-                          greeting = _getGreeting();
-                          userName = state.user.nome.split(' ').first;
-                        } else {
-                          greeting = 'Bem-vindo(a)';
-                        }
-                        
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center, // Centraliza verticalmente
-                          children: [
-                            Text(
-                              greeting,
-                              style: AppTextStyles.bodyMedium.copyWith(
-                                color: AppColors.textSecondary,
-                                fontSize: 16,
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      if (_selectedIndex == 0)
+                        Expanded(
+                          child: BlocBuilder<AuthBloc, AuthState>(
+                            builder: (context, state) {
+                              if (state is AuthAuthenticated) {
+                                final firstName = state.user.nome.isNotEmpty
+                                    ? state.user.nome.split(' ').first
+                                    : 'Usuário';
+                                return Text(
+                                  'Olá, $firstName ${_getGreetingEmoji()}',
+                                  style: AppTextStyles.h5.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 26,
+                                    letterSpacing: -0.3,
+                                  ),
+                                );
+                              } else {
+                                return GestureDetector(
+                                  onTap: () => Navigator.of(context).pushNamed('/login'),
+                                  child: Row(
+                                    children: [
+                                      Text(
+                                        'Bem-vindo! Faça login',
+                                        style: AppTextStyles.h5.copyWith(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 17,
+                                          color: const Color(0xFF424242),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      const Icon(
+                                        Icons.arrow_forward_rounded,
+                                        size: 18,
+                                        color: Color(0xFF424242),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }
+                            },
+                          ),
+                        )
+                      else
+                        const Spacer(),
+                      BlocBuilder<CartBloc, CartState>(
+                        builder: (context, cartState) {
+                          final itemCount = cartState is CartLoaded ? cartState.itemCount : 0;
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const CartScreen(),
+                                ),
+                              );
+                            },
+                            child: SizedBox(
+                              width: 42,
+                              height: 42,
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  SvgIcon(
+                                    assetPath: 'assets/icons/cart_icon.svg',
+                                    size: 26,
+                                    color: AppColors.textPrimary.withValues(alpha: 0.75),
+                                  ),
+                                  if (itemCount > 0)
+                                    Positioned(
+                                      top: 4,
+                                      right: 4,
+                                      child: Container(
+                                        width: 16,
+                                        height: 16,
+                                        decoration: const BoxDecoration(
+                                          color: AppColors.primary,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            itemCount > 9 ? '9+' : itemCount.toString(),
+                                            style: const TextStyle(
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.w700,
+                                              color: Color(0xFF020B21),
+                                              height: 1,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            if (state is AuthAuthenticated)
-                              Text(
-                                userName,
-                                style: AppTextStyles.h5.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              )
-                            else
-                              GestureDetector(
-                                onTap: () => Navigator.of(context).pushNamed('/login'),
-                                child: Row(
-                                  children: [
-                                    Text(
-                                      'Faça login',
-                                      style: AppTextStyles.h5.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                        color: const Color(0xFF424242),
-                                      ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  const Icon(
-                                    Icons.arrow_forward,
-                                    size: 20,
-                                    color: Color(0xFF424242),
-                                  ),
-                                  ],
-                                ),
-                              ),
-                          ],
-                        );
-                      },
-                    ),
-                  ),
-                  BlocBuilder<AuthBloc, AuthState>(
-                    builder: (context, state) {
-                      return GestureDetector(
-                        onTap: () {
-                          if (state is! AuthAuthenticated) {
-                            Navigator.of(context).pushNamed('/login');
-                          } else {
-                            setState(() {
-                              _selectedIndex = 4;
-                            });
-                          }
+                          );
                         },
-                        child: CircleAvatar(
-                          radius: 24,
-                          backgroundColor: const Color(0xFFF5F5F5),
-                          child: state is AuthAuthenticated
-                              ? Text(
-                                  state.user.nome.split(' ').first[0].toUpperCase(),
-                                  style: AppTextStyles.h5.copyWith(
-                                    color: AppColors.primary,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                )
-                              : const Icon(
-                                  Icons.person_outline,
-                                  color: AppColors.textSecondary,
-                                  size: 28,
-                                ),
-                        ),
-                      );
-                    },
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -212,21 +245,23 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
       drawer: _buildDrawer(context),
-      body: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 96), // Espaço para o dock
-            child: IndexedStack(
-              index: _selectedIndex,
-              children: [
-                _buildHomeContent(),
-                _buildOffersContent(),
-                _buildCategoriesContent(),
-                const FavoritesScreen(),
-                _buildProfileContent(),
-              ],
+      body: CartNotificationProvider(
+        onProductAdded: _showCartNotification,
+        child: Stack(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(bottom: 110), // Espaço para o dock + barra de navegação do Android
+              child: IndexedStack(
+                index: _selectedIndex,
+                children: [
+                  _buildHomeContent(),
+                  const CartScreen(),
+                  _buildCategoriesContent(),
+                  const FavoritesScreen(),
+                  _buildProfileContent(),
+                ],
+              ),
             ),
-          ),
           Positioned(
             bottom: 0,
             left: 0,
@@ -234,44 +269,52 @@ class _HomeScreenState extends State<HomeScreen> {
             child: MorphDock(
               currentIndex: _selectedIndex,
               onTap: _onItemTapped,
+              showNotification: _showNavNotification,
+              notificationText: _notificationText,
+              onViewCart: () {
+                setState(() {
+                  _showNavNotification = false;
+                  _selectedIndex = 1; // Índice da aba da cesta
+                });
+              },
               items: [
                 MorphDockItem(
                   icon: SvgIcon(
                     assetPath: 'assets/icons/home_icon.svg',
-                    size: 26,
-                    color: _selectedIndex == 0 ? AppColors.primary : AppColors.textSecondary,
+                    size: 24,
+                    color: _selectedIndex == 0 ? const Color(0xFF020B21) : Colors.white.withValues(alpha: 0.7),
                   ),
                   label: 'Início',
                 ),
                 MorphDockItem(
-                  icon: Icon(
-                    Icons.local_offer_outlined,
-                    size: 26,
-                    color: _selectedIndex == 1 ? AppColors.primary : AppColors.textSecondary,
+                  icon: SvgIcon(
+                    assetPath: 'assets/icons/cart_icon.svg',
+                    size: 24,
+                    color: _selectedIndex == 1 ? const Color(0xFF020B21) : Colors.white.withValues(alpha: 0.7),
                   ),
-                  label: 'Ofertas',
+                  label: 'Cesta',
                 ),
                 MorphDockItem(
                   icon: SvgIcon(
                     assetPath: 'assets/icons/categories_icon.svg',
-                    size: 26,
-                    color: _selectedIndex == 2 ? AppColors.primary : AppColors.textSecondary,
+                    size: 24,
+                    color: _selectedIndex == 2 ? const Color(0xFF020B21) : Colors.white.withValues(alpha: 0.7),
                   ),
                   label: 'Categorias',
                 ),
                 MorphDockItem(
-                  icon: Icon(
-                    Icons.favorite_outline,
-                    size: 26,
-                    color: _selectedIndex == 3 ? AppColors.primary : AppColors.textSecondary,
+                  icon: SvgIcon(
+                    assetPath: 'assets/icons/favorite_icon.svg',
+                    size: 24,
+                    color: _selectedIndex == 3 ? const Color(0xFF020B21) : Colors.white.withValues(alpha: 0.7),
                   ),
                   label: 'Favoritos',
                 ),
                 MorphDockItem(
                   icon: SvgIcon(
                     assetPath: 'assets/icons/profile_icon.svg',
-                    size: 26,
-                    color: _selectedIndex == 4 ? AppColors.primary : AppColors.textSecondary,
+                    size: 24,
+                    color: _selectedIndex == 4 ? const Color(0xFF020B21) : Colors.white.withValues(alpha: 0.7),
                   ),
                   label: 'Perfil',
                 ),
@@ -280,6 +323,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+    ),
     );
   }
 
@@ -305,79 +349,82 @@ class _HomeScreenState extends State<HomeScreen> {
               context.read<CatalogBloc>().add(LoadProducts());
             },
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.only(top: 8, bottom: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Animated Search Bar
-                  AnimatedSearchBar(
-                    onTap: () => _navigateToProductList(),
-                    onVoiceSearch: (searchText) => _navigateToProductList(searchQuery: searchText),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: AnimatedSearchBar(
+                      onSearch: (query) => _navigateToProductList(searchQuery: query),
+                      onVoiceSearch: (searchText) => _navigateToProductList(searchQuery: searchText),
+                    ),
                   ),
-                  
-                  // Greeting (Moved to AppBar, removing here to avoid duplication if needed, but user asked for banners below search bar)
-                  // The user instruction: "abaixo da barra de pesquisa deve ter banners, abaixo dos banner deve ter Recomendados"
                   
                   const SizedBox(height: 24),
 
-                  // Banners Section
-                  const HomeBanners(),
-                  
-                  const SizedBox(height: 24),
-
-                  // Recomendados Section
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Recomendados', style: AppTextStyles.h5),
-                      TextButton(
-              onPressed: () => _navigateToProductList(),
-                        child: Text(
-                          'Ver todos',
-                          style: AppTextStyles.buttonSmall.copyWith(
-                            color: AppColors.primary,
-                          ),
-                        ),
-                      ),
-                    ],
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: HomeBanners(
+                      onCategoryTap: (categoryId, categoryName) {
+                        _navigateToProductList(
+                          categoryId: categoryId,
+                          categoryName: categoryName,
+                        );
+                      },
+                    ),
                   ),
-                  const SizedBox(height: 12),
-                  // Using existing horizontal products list for Recomendados
+                  
+                  const SizedBox(height: 28),
+
+                  _buildSectionHeader('Recomendados', showViewAll: true, onViewAll: () {
+                    _navigateToProductList();
+                  }),
+                  const SizedBox(height: 14),
                   _buildHorizontalProducts(state.products.take(8).toList()),
 
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 28),
                   
-                  // Categories Section
-                  Text('Categorias', style: AppTextStyles.h5),
-                  const SizedBox(height: 16),
+                  _buildSectionHeader('Categorias', showViewAll: false),
+                  const SizedBox(height: 14),
                   _buildCategoriesHorizontal(state.categories),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 32),
                   
-                  // Promotional Products
                   if (state.promotionalProducts != null && 
                       state.promotionalProducts!.isNotEmpty) ...[
-                    Text('Ofertas da Semana', style: AppTextStyles.h5),
-                    const SizedBox(height: 12),
+                    _buildSectionHeader('Ofertas da Semana', showViewAll: true, onViewAll: () {
+                      _navigateToProductList(searchQuery: 'ofertas');
+                    }),
+                    const SizedBox(height: 14),
                     _buildPromotionalProducts(state.promotionalProducts!),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 32),
                   ],
                   
-                  // Featured Products
-                  Text('Destaques', style: AppTextStyles.h5),
-                  const SizedBox(height: 12),
+                  _buildSectionHeader('Destaques', showViewAll: true, onViewAll: () {
+                    _navigateToProductList(searchQuery: 'destaques');
+                  }),
+                  const SizedBox(height: 14),
                   _buildHorizontalProducts(state.products.skip(8).take(8).toList()),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 32),
                   
-                  // Best Sellers
-                  Text('Mais Vendidos', style: AppTextStyles.h5),
-                  const SizedBox(height: 12),
+                  _buildSectionHeader('Mais Vendidos', showViewAll: true, onViewAll: () {
+                    _navigateToProductList(searchQuery: 'mais vendidos');
+                  }),
+                  const SizedBox(height: 14),
                   _buildHorizontalProducts(state.products.skip(16).take(8).toList()),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 32),
                   
-                  // New Products
-                  Text('Lançamentos', style: AppTextStyles.h5),
-                  const SizedBox(height: 12),
-                  _buildHorizontalProducts(state.products.skip(24).take(8).toList()),
+                  _buildSectionHeader('Promoções', showViewAll: true, onViewAll: () {
+                    _navigateToProductList(searchQuery: 'promoções');
+                  }),
+                  const SizedBox(height: 14),
+                  Builder(builder: (_) {
+                    final promo = state.products.where((p) => p.emPromocao).take(8).toList();
+                    return _buildHorizontalProducts(
+                      promo.isEmpty ? state.products.skip(24).take(8).toList() : promo,
+                    );
+                  }),
+                  const SizedBox(height: 40),
                 ],
               ),
             ),
@@ -391,34 +438,73 @@ class _HomeScreenState extends State<HomeScreen> {
 
 
 
+  Widget _buildSectionHeader(String title, {bool showViewAll = false, VoidCallback? onViewAll}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            title,
+            style: AppTextStyles.h5.copyWith(
+              fontWeight: FontWeight.w700,
+              fontSize: 19,
+              letterSpacing: -0.4,
+            ),
+          ),
+          if (showViewAll && onViewAll != null)
+            GestureDetector(
+              onTap: onViewAll,
+              child: Text(
+                'Ver tudo',
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.textTertiary,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCategoriesHorizontal(List categories) {
     return SizedBox(
-      height: 120, // Altura aumentada para acomodar 2 linhas de texto
-      child: ListView.builder(
+      height: 110,
+      child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        itemCount: categories.length + 1, // +1 para "Todas"
+        padding: const EdgeInsets.only(left: 20, right: 20),
+        itemCount: categories.length + 1,
+        separatorBuilder: (context, index) => const SizedBox(width: 14),
         itemBuilder: (context, index) {
-          // Primeiro item: "Todas as categorias"
           if (index == 0) {
-            return Container(
-              margin: const EdgeInsets.only(right: 16),
-              child: AllCategoriesCard(
-                      onTap: () => _navigateToProductList(),
-              ),
-            );
+            return AllCategoriesCard(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (ctx) => MultiBlocProvider(
+                        providers: [
+                          BlocProvider.value(value: context.read<CatalogBloc>()),
+                          BlocProvider.value(value: context.read<CartBloc>()),
+                          BlocProvider.value(value: context.read<FavoritesBloc>()),
+                        ],
+                        child: const CategoriesScreen(),
+                      ),
+                    ),
+                  );
+                },
+              );
           }
-          
-          // Demais categorias
+
           final category = categories[index - 1];
-          return Container(
-            margin: EdgeInsets.only(
-              right: index < categories.length ? 16 : 0,
-            ),
-            child: CategoryCard(
+          return CategoryCard(
               category: category,
-              onTap: () => _navigateToProductList(category: category.nome),
-            ),
-          );
+              onTap: () => _navigateToProductList(
+                  categoryId: category.id, categoryName: category.nome),
+            );
         },
       ),
     );
@@ -426,140 +512,67 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildPromotionalProducts(List products) {
     return SizedBox(
-      height: 310, // Altura aumentada
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: products.length,
-        itemBuilder: (context, index) {
-          final product = products[index];
-          return Container(
-            width: 160, // Largura padronizada
-            margin: EdgeInsets.only(right: index < products.length - 1 ? 20 : 0),
-            child: ProductCard(
-              product: product,
-              onTap: () {
-                _navigateToProductDetails(product.id);
-              },
-            ),
+      height: 320,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Calcula largura para mostrar 2 produtos completos + um pouco do 3º
+          final screenWidth = MediaQuery.of(context).size.width;
+          final availableWidth = screenWidth - 40; // 20px padding de cada lado
+          final itemWidth = (availableWidth - 24) / 2.2; // 2 espaçamentos de 12px, mostra 2.2 produtos
+          
+          return ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            itemCount: products.length,
+            separatorBuilder: (context, index) => const SizedBox(width: 12),
+            itemBuilder: (context, index) {
+              final product = products[index];
+              return SizedBox(
+                width: itemWidth,
+                child: ProductCard(
+                  product: product,
+                  onTap: () {
+                    _navigateToProductDetails(product.id);
+                  },
+                ),
+              );
+            },
           );
-        },
+        }
       ),
     );
   }
 
   Widget _buildHorizontalProducts(List products) {
     return SizedBox(
-      height: 310, // Altura aumentada para cards de produtos
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: products.length,
-        itemBuilder: (context, index) {
-          final product = products[index];
-          return Container(
-            width: 160, // Largura de cada card
-            margin: EdgeInsets.only(right: index < products.length - 1 ? 20 : 0), // Espaçamento aumentado
-            child: ProductCard(
-              product: product,
-              onTap: () {
-                _navigateToProductDetails(product.id);
-              },
-            ),
+      height: 320,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Calcula largura para mostrar 2 produtos completos + um pouco do 3º
+          final screenWidth = MediaQuery.of(context).size.width;
+          final availableWidth = screenWidth - 40; // 20px padding de cada lado
+          final itemWidth = (availableWidth - 24) / 2.2; // 2 espaçamentos de 12px, mostra 2.2 produtos
+          
+          return ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            itemCount: products.length,
+            separatorBuilder: (context, index) => const SizedBox(width: 12),
+            itemBuilder: (context, index) {
+              final product = products[index];
+              return SizedBox(
+                width: itemWidth,
+                child: ProductCard(
+                  product: product,
+                  onTap: () {
+                    _navigateToProductDetails(product.id);
+                  },
+                ),
+              );
+            },
           );
-        },
+        }
       ),
-    );
-  }
-
-  Widget _buildOffersContent() {
-    return BlocBuilder<CatalogBloc, CatalogState>(
-      builder: (context, state) {
-        if (state is CatalogLoading) {
-          return const LoadingIndicator();
-        }
-
-        if (state is CatalogError) {
-          return CustomErrorWidget(
-            message: state.message,
-            onRetry: () {
-              context.read<CatalogBloc>().add(LoadProducts());
-            },
-          );
-        }
-
-        if (state is CatalogLoaded) {
-          // Filtrar apenas produtos em promoção
-          final offersProducts = state.products.where((p) => p.emPromocao).toList();
-
-          return RefreshIndicator(
-            onRefresh: () async {
-              context.read<CatalogBloc>().add(LoadProducts());
-            },
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Ofertas Especiais', style: AppTextStyles.h4),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Aproveite os melhores preços!',
-                    style: AppTextStyles.bodyMedium.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  if (offersProducts.isEmpty)
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(32),
-                      child: Column(
-                        children: [
-                          const Icon(
-                            Icons.local_offer_outlined,
-                            size: 80,
-                            color: AppColors.textTertiary,
-                          ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Nenhuma oferta disponível no momento',
-                              style: AppTextStyles.bodyLarge.copyWith(
-                                color: AppColors.textSecondary,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  else
-                    GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        childAspectRatio: 0.52,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
-                      ),
-                      itemCount: offersProducts.length,
-                      itemBuilder: (context, index) {
-                        final product = offersProducts[index];
-                        return ProductCard(
-                          product: product,
-                          onTap: () {
-                              _navigateToProductDetails(product.id);
-                          },
-                        );
-                      },
-                    ),
-                ],
-              ),
-            ),
-          );
-        }
-
-        return const SizedBox.shrink();
-      },
     );
   }
 
@@ -598,23 +611,35 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
-                      childAspectRatio: 0.8,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                    ),
-                    itemCount: state.categories.length,
-                    itemBuilder: (context, index) {
-                      final category = state.categories[index];
-                      return CategoryCard(
-                        category: category,
-                        onTap: () {
-                          _navigateToProductList(category: category.nome);
-                        },
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      const spacing = 16.0;
+                      const cols = 3;
+                      final itemW = (constraints.maxWidth - spacing * (cols - 1)) / cols;
+                      final itemH = itemW / 0.8;
+                      final rows = (state.categories.length / cols).ceil();
+                      final gridH = rows * itemH + (rows - 1) * spacing;
+                      return SizedBox(
+                        height: gridH,
+                        child: GridView.builder(
+                          physics: const NeverScrollableScrollPhysics(),
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: cols,
+                            childAspectRatio: 0.8,
+                            crossAxisSpacing: spacing,
+                            mainAxisSpacing: spacing,
+                          ),
+                          itemCount: state.categories.length,
+                          itemBuilder: (context, index) {
+                            final category = state.categories[index];
+                            return CategoryCard(
+                              category: category,
+                              onTap: () {
+                                _navigateToProductList(categoryId: category.id, categoryName: category.nome);
+                              },
+                            );
+                          },
+                        ),
                       );
                     },
                   ),
@@ -699,7 +724,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       radius: 40,
                       backgroundColor: AppColors.primary.withValues(alpha: 0.1),
                       child: Text(
-                          user.nome[0].toUpperCase(),
+                          user.nome.isNotEmpty ? user.nome[0].toUpperCase() : 'U',
                           style: AppTextStyles.h3.copyWith(
                             color: AppColors.primary,
                           ),
@@ -750,9 +775,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   icon: Icons.location_on_outlined,
                   title: 'Endereços',
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Endereços serão implementados na Fase 2'),
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AddressesScreen(),
                       ),
                     );
                   },
@@ -765,9 +791,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   icon: Icons.settings_outlined,
                   title: 'Configurações',
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Configurações serão implementadas na Fase 2'),
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const SettingsScreen(),
                       ),
                     );
                   },
@@ -776,9 +803,22 @@ class _HomeScreenState extends State<HomeScreen> {
                   icon: Icons.help_outline,
                   title: 'Ajuda',
                   onTap: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Ajuda será implementada na Fase 2'),
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const HelpScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _buildMenuItem(
+                  icon: Icons.info_outline,
+                  title: 'Sobre',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AboutScreen(),
                       ),
                     );
                   },
@@ -852,9 +892,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     CircleAvatar(
                       radius: 30,
                       backgroundColor: Colors.white,
-                      child: state is AuthAuthenticated
+                      child: state is AuthAuthenticated && state.user.nome.isNotEmpty
                           ? Text(
-                              state.user.nome.split(' ').first[0].toUpperCase(),
+                              state.user.nome[0].toUpperCase(),
                               style: AppTextStyles.h4.copyWith(
                                 color: AppColors.primary,
                                 fontWeight: FontWeight.w700,
@@ -927,9 +967,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   title: const Text('Meus Pedidos'),
                   onTap: () {
                     Navigator.pop(context);
-                    setState(() {
-                      _selectedIndex = 1;
-                    });
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const OrdersScreen(),
+                      ),
+                    );
                   },
                 ),
                 ListTile(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/loading_indicator.dart';
@@ -42,8 +43,7 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
     });
 
     try {
-      // Busca o produto diretamente do repositório sem afetar o estado global
-      final productRepository = ProductRepository();
+      final productRepository = context.read<ProductRepository>();
       final product = await productRepository.getProductById(widget.productId);
       
       if (product != null) {
@@ -129,13 +129,40 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                   color: AppColors.surfaceVariant,
                   child: Stack(
                     children: [
-                      const Center(
-                        child: Icon(
-                          Icons.medication,
-                          size: 120,
-                          color: AppColors.textTertiary,
+                      if (product.imagemUrl != null && product.imagemUrl!.isNotEmpty)
+                        Center(
+                          child: CachedNetworkImage(
+                            imageUrl: product.imagemUrl!,
+                            height: 300,
+                            width: double.infinity,
+                            fit: BoxFit.contain,
+                            placeholder: (_, __) => const Center(
+                              child: SizedBox(
+                                width: 28,
+                                height: 28,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ),
+                            errorWidget: (_, __, ___) => const Center(
+                              child: Icon(
+                                Icons.medication_rounded,
+                                size: 100,
+                                color: AppColors.textTertiary,
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        const Center(
+                          child: Icon(
+                            Icons.medication_rounded,
+                            size: 100,
+                            color: AppColors.textTertiary,
+                          ),
                         ),
-                      ),
                       // Badges
                       Positioned(
                         top: 16,
@@ -289,8 +316,16 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                       _buildInfoRow('Categoria', product.categoria),
                       const SizedBox(height: 12),
                       
+                      _buildInfoRow('Unidade', product.unidade),
+                      const SizedBox(height: 12),
+                      
                       if (product.codigoBarras != null) ...[
                         _buildInfoRow('Código de Barras', product.codigoBarras!),
+                        const SizedBox(height: 12),
+                      ],
+                      
+                      if (product.classificacaoFiscal != null) ...[
+                        _buildInfoRow('Classificação Fiscal', product.classificacaoFiscal!),
                         const SizedBox(height: 12),
                       ],
                       
@@ -399,14 +434,11 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                   
                   // Add to Cart Button
                   Expanded(
-                    child: CustomButton(
-                      text: 'Adicionar ao Carrinho',
-                      onPressed: () {
-                        for (int i = 0; i < _quantity; i++) {
-                          context.read<CartBloc>().add(
-                            AddToCart(product: product),
-                          );
-                        }
+                    child: GestureDetector(
+                      onTap: () {
+                        context.read<CartBloc>().add(
+                          AddToCart(product: product, quantity: _quantity),
+                        );
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
@@ -418,7 +450,32 @@ class _ProductDetailsScreenState extends State<ProductDetailsScreen> {
                           ),
                         );
                       },
-                      icon: Icons.shopping_cart,
+                      child: Container(
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1A1A1A),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.shopping_bag_outlined,
+                              color: Colors.white,
+                              size: 22,
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Adicionar',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ],

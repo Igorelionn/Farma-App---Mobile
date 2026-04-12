@@ -25,6 +25,10 @@ class OrderCard extends StatelessWidget {
         statusColor = AppColors.warning;
         statusIcon = Icons.schedule;
         break;
+      case OrderStatus.confirmed:
+        statusColor = const Color(0xFF8B5CF6);
+        statusIcon = Icons.thumb_up_alt_outlined;
+        break;
       case OrderStatus.processing:
         statusColor = AppColors.info;
         statusIcon = Icons.inventory_2;

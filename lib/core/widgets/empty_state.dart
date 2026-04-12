@@ -3,7 +3,8 @@ import '../theme/app_colors.dart';
 import '../theme/app_text_styles.dart';
 
 class EmptyState extends StatelessWidget {
-  final IconData icon;
+  final IconData? icon;
+  final Widget? iconWidget;
   final String title;
   final String? message;
   final String? actionText;
@@ -11,12 +12,13 @@ class EmptyState extends StatelessWidget {
   
   const EmptyState({
     super.key,
-    required this.icon,
+    this.icon,
+    this.iconWidget,
     required this.title,
     this.message,
     this.actionText,
     this.onActionPressed,
-  });
+  }) : assert(icon != null || iconWidget != null, 'Either icon or iconWidget must be provided');
 
   @override
   Widget build(BuildContext context) {
@@ -26,11 +28,14 @@ class EmptyState extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              size: 80,
-              color: AppColors.textTertiary,
-            ),
+            if (iconWidget != null)
+              iconWidget!
+            else
+              Icon(
+                icon!,
+                size: 80,
+                color: AppColors.textTertiary,
+              ),
             const SizedBox(height: 24),
             Text(
               title,

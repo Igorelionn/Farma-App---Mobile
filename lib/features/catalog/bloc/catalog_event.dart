@@ -59,3 +59,5 @@ class LoadProductDetails extends CatalogEvent {
 
 class LoadPromotionalProducts extends CatalogEvent {}
 
+class ProductsUpdatedFromRealtime extends CatalogEvent {}
+

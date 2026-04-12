@@ -3,29 +3,37 @@ import 'product.dart';
 
 class CartItem extends Equatable {
   final String id;
-  final Product product;
+  final String userId;
+  final String productId;
+  final Product? product;
   final int quantity;
   final DateTime addedAt;
   
   const CartItem({
     required this.id,
-    required this.product,
+    required this.userId,
+    required this.productId,
+    this.product,
     required this.quantity,
     required this.addedAt,
   });
   
-  double get subtotal => product.precoFinal * quantity;
+  double get subtotal => (product?.precoFinal ?? 0) * quantity;
   
-  bool get isValid => product.disponivel && product.estoque >= quantity;
+  bool get isValid => product != null && product!.disponivel && product!.estoque >= quantity;
   
   CartItem copyWith({
     String? id,
+    String? userId,
+    String? productId,
     Product? product,
     int? quantity,
     DateTime? addedAt,
   }) {
     return CartItem(
       id: id ?? this.id,
+      userId: userId ?? this.userId,
+      productId: productId ?? this.productId,
       product: product ?? this.product,
       quantity: quantity ?? this.quantity,
       addedAt: addedAt ?? this.addedAt,
@@ -33,25 +41,33 @@ class CartItem extends Equatable {
   }
   
   factory CartItem.fromJson(Map<String, dynamic> json) {
+    Product? product;
+    if (json['products'] != null && json['products'] is Map) {
+      product = Product.fromJson(json['products'] as Map<String, dynamic>);
+    } else if (json['product'] != null && json['product'] is Map) {
+      product = Product.fromJson(json['product'] as Map<String, dynamic>);
+    }
+
     return CartItem(
       id: json['id'] as String,
-      product: Product.fromJson(json['product'] as Map<String, dynamic>),
+      userId: json['user_id'] as String? ?? '',
+      productId: json['product_id'] as String,
+      product: product,
       quantity: json['quantity'] as int,
-      addedAt: DateTime.parse(json['addedAt'] as String),
+      addedAt: json['added_at'] != null
+          ? DateTime.parse(json['added_at'] as String)
+          : DateTime.now(),
     );
   }
   
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
-      'product': product.toJson(),
+      'user_id': userId,
+      'product_id': productId,
       'quantity': quantity,
-      'addedAt': addedAt.toIso8601String(),
     };
   }
   
   @override
-  List<Object?> get props => [id, product, quantity, addedAt];
+  List<Object?> get props => [id, userId, productId, product, quantity, addedAt];
 }
-
-

@@ -3,9 +3,29 @@ import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
 class AppTheme {
+  static const String _fontFamily = 'Folio Medium';
+  
+  static TextStyle _folioMedium({
+    double? fontSize,
+    FontWeight? fontWeight,
+    Color? color,
+    double? height,
+    double? letterSpacing,
+  }) {
+    return TextStyle(
+      fontFamily: _fontFamily,
+      fontSize: fontSize,
+      fontWeight: fontWeight ?? FontWeight.w500,
+      color: color,
+      height: height,
+      letterSpacing: letterSpacing,
+    );
+  }
+  
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
+      fontFamily: _fontFamily,
       colorScheme: const ColorScheme.light(
         primary: AppColors.primary,
         secondary: AppColors.secondary,
@@ -23,7 +43,7 @@ class AppTheme {
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
         centerTitle: false,
-        titleTextStyle: GoogleFonts.urbanist(
+        titleTextStyle: _folioMedium(
           fontSize: 20,
           fontWeight: FontWeight.w600,
           color: AppColors.textPrimary,
@@ -54,7 +74,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
           ),
-          textStyle: GoogleFonts.urbanist(
+          textStyle: _folioMedium(
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -69,7 +89,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
           ),
-          textStyle: GoogleFonts.urbanist(
+          textStyle: _folioMedium(
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -80,7 +100,7 @@ class AppTheme {
         style: TextButton.styleFrom(
           foregroundColor: AppColors.primary,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          textStyle: GoogleFonts.urbanist(
+          textStyle: _folioMedium(
             fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
@@ -111,15 +131,15 @@ class AppTheme {
           borderRadius: BorderRadius.circular(8),
           borderSide: const BorderSide(color: AppColors.error, width: 2),
         ),
-        labelStyle: GoogleFonts.urbanist(
+        labelStyle: _folioMedium(
           fontSize: 14,
           color: AppColors.textSecondary,
         ),
-        hintStyle: GoogleFonts.urbanist(
+        hintStyle: _folioMedium(
           fontSize: 14,
           color: AppColors.textTertiary,
         ),
-        errorStyle: GoogleFonts.urbanist(
+        errorStyle: _folioMedium(
           fontSize: 12,
           color: AppColors.error,
         ),
@@ -128,7 +148,7 @@ class AppTheme {
       chipTheme: ChipThemeData(
         backgroundColor: AppColors.surfaceVariant,
         selectedColor: AppColors.primary,
-        labelStyle: GoogleFonts.urbanist(
+        labelStyle: _folioMedium(
           fontSize: 14,
           fontWeight: FontWeight.w500,
         ),
@@ -151,7 +171,23 @@ class AppTheme {
         thickness: 1,
       ),
       
-      textTheme: GoogleFonts.urbanistTextTheme(),
+      textTheme: TextTheme(
+        displayLarge: _folioMedium(fontSize: 57, fontWeight: FontWeight.w500),
+        displayMedium: _folioMedium(fontSize: 45, fontWeight: FontWeight.w500),
+        displaySmall: _folioMedium(fontSize: 36, fontWeight: FontWeight.w500),
+        headlineLarge: _folioMedium(fontSize: 32, fontWeight: FontWeight.w500),
+        headlineMedium: _folioMedium(fontSize: 28, fontWeight: FontWeight.w500),
+        headlineSmall: _folioMedium(fontSize: 24, fontWeight: FontWeight.w500),
+        titleLarge: _folioMedium(fontSize: 22, fontWeight: FontWeight.w500),
+        titleMedium: _folioMedium(fontSize: 16, fontWeight: FontWeight.w500),
+        titleSmall: _folioMedium(fontSize: 14, fontWeight: FontWeight.w500),
+        bodyLarge: _folioMedium(fontSize: 16, fontWeight: FontWeight.w500),
+        bodyMedium: _folioMedium(fontSize: 14, fontWeight: FontWeight.w500),
+        bodySmall: _folioMedium(fontSize: 12, fontWeight: FontWeight.w500),
+        labelLarge: _folioMedium(fontSize: 14, fontWeight: FontWeight.w500),
+        labelMedium: _folioMedium(fontSize: 12, fontWeight: FontWeight.w500),
+        labelSmall: _folioMedium(fontSize: 11, fontWeight: FontWeight.w500),
+      ),
     );
   }
 }

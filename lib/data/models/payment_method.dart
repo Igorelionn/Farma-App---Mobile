@@ -12,8 +12,8 @@ class PaymentMethod extends Equatable {
   final PaymentType type;
   final String label;
   final String? description;
-  final List<int>? installmentOptions; // Opções de parcelamento
-  final int? daysToExpire; // Para boleto
+  final List<int>? installmentOptions;
+  final int? daysToExpire;
   
   const PaymentMethod({
     required this.id,
@@ -38,28 +38,37 @@ class PaymentMethod extends Equatable {
   }
   
   factory PaymentMethod.fromJson(Map<String, dynamic> json) {
+    final typeStr = json['type'] as String;
+    final paymentType = PaymentType.values.firstWhere(
+      (e) => e.toString() == 'PaymentType.$typeStr' || e.name == typeStr,
+      orElse: () => PaymentType.boleto,
+    );
+
+    List<int>? installments;
+    if (json['installment_options'] != null) {
+      installments = List<int>.from(json['installment_options'] as List);
+    } else if (json['installmentOptions'] != null) {
+      installments = List<int>.from(json['installmentOptions'] as List);
+    }
+
     return PaymentMethod(
       id: json['id'] as String,
-      type: PaymentType.values.firstWhere(
-        (e) => e.toString() == 'PaymentType.${json['type']}',
-      ),
+      type: paymentType,
       label: json['label'] as String,
       description: json['description'] as String?,
-      installmentOptions: json['installmentOptions'] != null
-          ? List<int>.from(json['installmentOptions'] as List)
-          : null,
-      daysToExpire: json['daysToExpire'] as int?,
+      installmentOptions: installments,
+      daysToExpire: json['days_to_expire'] as int? ?? json['daysToExpire'] as int?,
     );
   }
   
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'type': type.toString().split('.').last,
+      'type': type.name,
       'label': label,
       'description': description,
-      'installmentOptions': installmentOptions,
-      'daysToExpire': daysToExpire,
+      'installment_options': installmentOptions,
+      'days_to_expire': daysToExpire,
     };
   }
   
@@ -68,5 +77,3 @@ class PaymentMethod extends Equatable {
     id, type, label, description, installmentOptions, daysToExpire,
   ];
 }
-
-

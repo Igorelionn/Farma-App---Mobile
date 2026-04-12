@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class AppColors {
   // Primary Colors - Verde Esmeralda Azulado Suevit
-  static const Color primary = Color(0xFF10B981); // Verde esmeralda azulado
+  static const Color primary = Color(0xFF11F2D4); // rgb(17, 242, 212) - Ciano
   static const Color primaryLight = Color(0xFF34D399); // Verde claro azulado
   static const Color primaryDark = Color(0xFF059669); // Verde escuro azulado
   
@@ -20,11 +20,18 @@ class AppColors {
   static const Color surface = Color(0xFFFFFFFF);
   static const Color surfaceVariant = Color(0xFFF3F4F6);
   
+  // Navigation Bar
+  static const Color navBarBackground = Color(0xFF020B21); // rgb(2, 11, 33)
+  
   // Text Colors
-  static const Color textPrimary = Color(0xFF111827);
+  static const Color textPrimary = Color(0xFF212529);
   static const Color textSecondary = Color(0xFF6B7280);
   static const Color textTertiary = Color(0xFF9CA3AF);
   static const Color textOnPrimary = Color(0xFFFFFFFF);
+  
+  // Surface Colors
+  static const Color surfaceLight = Color(0xFFF5F6F7);
+  static const Color surfaceWhite = Color(0xFFFFFFFF);
   
   // Border Colors
   static const Color border = Color(0xFFE5E7EB);

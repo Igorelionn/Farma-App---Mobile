@@ -8,14 +8,19 @@ class Product extends Equatable {
   final double preco;
   final String apresentacao;
   final int estoque;
-  final String categoria;
-  final String? imagem;
-  final String? tarja; // 'vermelha', 'preta', 'amarela', null
+  final String categoryId;
+  final String? categoryNome;
+  final String? imagemUrl;
+  final String? tarja;
   final String? descricao;
   final bool disponivel;
   final String? codigoBarras;
   final bool emPromocao;
   final double? precoPromocional;
+  final String? excelRowId;
+  final DateTime? lastSyncedAt;
+  final String? classificacaoFiscal;
+  final String unidade;
   
   const Product({
     required this.id,
@@ -25,35 +30,58 @@ class Product extends Equatable {
     required this.preco,
     required this.apresentacao,
     required this.estoque,
-    required this.categoria,
-    this.imagem,
+    required this.categoryId,
+    this.categoryNome,
+    this.imagemUrl,
     this.tarja,
     this.descricao,
     this.disponivel = true,
     this.codigoBarras,
     this.emPromocao = false,
     this.precoPromocional,
+    this.excelRowId,
+    this.lastSyncedAt,
+    this.classificacaoFiscal,
+    this.unidade = 'UN',
   });
   
   factory Product.fromJson(Map<String, dynamic> json) {
+    String? catNome;
+    String catId;
+
+    if (json['categories'] != null && json['categories'] is Map) {
+      catNome = json['categories']['nome'] as String?;
+      catId = json['category_id'] as String;
+    } else {
+      catId = json['category_id'] as String? ?? '';
+      catNome = json['category_nome'] as String?;
+    }
+
     return Product(
       id: json['id'] as String,
       nome: json['nome'] as String,
-      principioAtivo: json['principioAtivo'] as String?,
+      principioAtivo: json['principio_ativo'] as String?,
       laboratorio: json['laboratorio'] as String,
       preco: (json['preco'] as num).toDouble(),
       apresentacao: json['apresentacao'] as String,
-      estoque: json['estoque'] as int,
-      categoria: json['categoria'] as String,
-      imagem: json['imagem'] as String?,
+      estoque: json['estoque'] as int? ?? 0,
+      categoryId: catId,
+      categoryNome: catNome,
+      imagemUrl: json['imagem_url'] as String?,
       tarja: json['tarja'] as String?,
       descricao: json['descricao'] as String?,
       disponivel: json['disponivel'] as bool? ?? true,
-      codigoBarras: json['codigoBarras'] as String?,
-      emPromocao: json['emPromocao'] as bool? ?? false,
-      precoPromocional: json['precoPromocional'] != null
-          ? (json['precoPromocional'] as num).toDouble()
+      codigoBarras: json['codigo_barras'] as String?,
+      emPromocao: json['em_promocao'] as bool? ?? false,
+      precoPromocional: json['preco_promocional'] != null
+          ? (json['preco_promocional'] as num).toDouble()
           : null,
+      excelRowId: json['excel_row_id'] as String?,
+      lastSyncedAt: json['last_synced_at'] != null
+          ? DateTime.parse(json['last_synced_at'] as String)
+          : null,
+      classificacaoFiscal: json['classificacao_fiscal'] as String?,
+      unidade: json['unidade'] as String? ?? 'UN',
     );
   }
   
@@ -61,45 +89,42 @@ class Product extends Equatable {
     return {
       'id': id,
       'nome': nome,
-      'principioAtivo': principioAtivo,
+      'principio_ativo': principioAtivo,
       'laboratorio': laboratorio,
       'preco': preco,
       'apresentacao': apresentacao,
       'estoque': estoque,
-      'categoria': categoria,
-      'imagem': imagem,
+      'category_id': categoryId,
+      'imagem_url': imagemUrl,
       'tarja': tarja,
       'descricao': descricao,
       'disponivel': disponivel,
-      'codigoBarras': codigoBarras,
-      'emPromocao': emPromocao,
-      'precoPromocional': precoPromocional,
+      'codigo_barras': codigoBarras,
+      'em_promocao': emPromocao,
+      'preco_promocional': precoPromocional,
+      'classificacao_fiscal': classificacaoFiscal,
+      'unidade': unidade,
     };
   }
+
+  String get categoria => categoryNome ?? '';
   
   double get precoFinal => emPromocao && precoPromocional != null 
       ? precoPromocional! 
       : preco;
+
+  String? get imagem => imagemUrl;
   
   bool get isControlado => tarja == 'preta' || tarja == 'vermelha';
   
+  String get codigo => excelRowId ?? '';
+
   @override
   List<Object?> get props => [
-    id,
-    nome,
-    principioAtivo,
-    laboratorio,
-    preco,
-    apresentacao,
-    estoque,
-    categoria,
-    imagem,
-    tarja,
-    descricao,
-    disponivel,
-    codigoBarras,
-    emPromocao,
-    precoPromocional,
+    id, nome, principioAtivo, laboratorio, preco,
+    apresentacao, estoque, categoryId, categoryNome,
+    imagemUrl, tarja, descricao, disponivel,
+    codigoBarras, emPromocao, precoPromocional,
+    excelRowId, lastSyncedAt, classificacaoFiscal, unidade,
   ];
 }
-

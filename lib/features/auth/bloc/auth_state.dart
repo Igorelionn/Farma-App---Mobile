@@ -21,6 +21,24 @@ class AuthAuthenticated extends AuthState {
   List<Object?> get props => [user];
 }
 
+class AuthPendingApproval extends AuthState {
+  final User user;
+
+  const AuthPendingApproval({required this.user});
+
+  @override
+  List<Object?> get props => [user];
+}
+
+class AuthRejected extends AuthState {
+  final User user;
+
+  const AuthRejected({required this.user});
+
+  @override
+  List<Object?> get props => [user];
+}
+
 class AuthUnauthenticated extends AuthState {}
 
 class AuthError extends AuthState {
@@ -32,3 +50,6 @@ class AuthError extends AuthState {
   List<Object?> get props => [message];
 }
 
+class AuthPasswordResetSent extends AuthState {}
+
+class AuthRegistered extends AuthState {}

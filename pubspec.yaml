@@ -10,6 +10,10 @@ dependencies:
   flutter:
     sdk: flutter
   
+  # Backend
+  supabase_flutter: ^2.8.0
+  flutter_dotenv: ^5.2.1
+  
   # State Management
   flutter_bloc: ^9.1.1
   equatable: ^2.0.5
@@ -21,10 +25,8 @@ dependencies:
   
   # Utilities
   intl: ^0.20.2
-  shared_preferences: ^2.5.4
-  
-  # Navigation
-  go_router: ^17.0.1
+  http: ^1.2.0
+  file_picker: ^8.1.2
   
   # Icons
   cupertino_icons: ^1.0.6
@@ -32,6 +34,7 @@ dependencies:
   # Voice Recognition
   speech_to_text: ^7.0.0
   permission_handler: ^12.0.1
+  shared_preferences: ^2.5.5
  
 dev_dependencies:
   flutter_test:
@@ -42,7 +45,18 @@ flutter:
   uses-material-design: true
   
   assets:
+    - .env
     - assets/images/
     - assets/data/
     - assets/icons/
-
+    - public/
+  
+  fonts:
+    - family: Folio Medium
+      fonts:
+        - asset: assets/fonts/FolioMedium.otf
+          weight: 500
+    - family: Mona Sans
+      fonts:
+        - asset: assets/fonts/Mona-Sans-Regular.otf
+          weight: 400

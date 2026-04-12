@@ -1,112 +1,85 @@
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/cart_item.dart';
 import '../models/product.dart';
+import '../../core/services/supabase_service.dart';
+import '../../core/constants/app_constants.dart';
 
 class CartRepository {
-  final SharedPreferences prefs;
-  static const String _keyCart = 'cart_items';
+  SupabaseClient get _client => SupabaseService.client;
+  String? get _userId => SupabaseService.currentUserId;
   
-  CartRepository({required this.prefs});
-  
-  // Carregar carrinho
   Future<List<CartItem>> getCartItems() async {
-    try {
-      final String? cartJson = prefs.getString(_keyCart);
-      if (cartJson == null || cartJson.isEmpty) {
-        return [];
-      }
-      
-      final List<dynamic> cartList = json.decode(cartJson);
-      return cartList
-          .map((item) => CartItem.fromJson(item as Map<String, dynamic>))
-          .toList();
-    } catch (e) {
-      return [];
-    }
+    if (_userId == null) return [];
+
+    final response = await _client.from('cart_items')
+        .select('*, products(*, categories(nome))')
+        .eq('user_id', _userId!)
+        .order('added_at');
+    
+    return (response as List)
+        .map((json) => CartItem.fromJson(json as Map<String, dynamic>))
+        .toList();
   }
   
-  // Salvar carrinho
-  Future<void> _saveCart(List<CartItem> items) async {
-    final cartJson = json.encode(items.map((item) => item.toJson()).toList());
-    await prefs.setString(_keyCart, cartJson);
-  }
-  
-  // Adicionar produto ao carrinho
   Future<List<CartItem>> addToCart(Product product, {int quantity = 1}) async {
-    final items = await getCartItems();
+    if (_userId == null) throw Exception('Usuário não autenticado');
+
+    final existing = await _client.from('cart_items')
+        .select()
+        .eq('user_id', _userId!)
+        .eq('product_id', product.id)
+        .maybeSingle();
     
-    // Verificar se o produto já está no carrinho
-    final existingIndex = items.indexWhere((item) => item.product.id == product.id);
-    
-    if (existingIndex != -1) {
-      // Atualizar quantidade
-      final existingItem = items[existingIndex];
-      final newQuantity = existingItem.quantity + quantity;
-      
-      // Validar estoque
+    if (existing != null) {
+      final newQuantity = (existing['quantity'] as int) + quantity;
       if (newQuantity > product.estoque) {
         throw Exception('Quantidade excede o estoque disponível');
       }
-      
-      items[existingIndex] = existingItem.copyWith(quantity: newQuantity);
+      await _client.from('cart_items')
+          .update({'quantity': newQuantity})
+          .eq('id', existing['id']);
     } else {
-      // Adicionar novo item
       if (quantity > product.estoque) {
         throw Exception('Quantidade excede o estoque disponível');
       }
-      
-      final newItem = CartItem(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        product: product,
-        quantity: quantity,
-        addedAt: DateTime.now(),
-      );
-      items.add(newItem);
+      await _client.from('cart_items').insert({
+        'user_id': _userId,
+        'product_id': product.id,
+        'quantity': quantity,
+      });
     }
     
-    await _saveCart(items);
-    return items;
+    return await getCartItems();
   }
   
-  // Remover item do carrinho
   Future<List<CartItem>> removeFromCart(String itemId) async {
-    final items = await getCartItems();
-    items.removeWhere((item) => item.id == itemId);
-    await _saveCart(items);
-    return items;
+    if (_userId == null) throw Exception('Usuário não autenticado');
+    await _client.from('cart_items')
+        .delete()
+        .eq('id', itemId)
+        .eq('user_id', _userId!);
+    return await getCartItems();
   }
-  
-  // Atualizar quantidade
+
   Future<List<CartItem>> updateQuantity(String itemId, int newQuantity) async {
+    if (_userId == null) throw Exception('Usuário não autenticado');
     if (newQuantity <= 0) {
       return removeFromCart(itemId);
     }
-    
-    final items = await getCartItems();
-    final index = items.indexWhere((item) => item.id == itemId);
-    
-    if (index != -1) {
-      final item = items[index];
-      
-      // Validar estoque
-      if (newQuantity > item.product.estoque) {
-        throw Exception('Quantidade excede o estoque disponível');
-      }
-      
-      items[index] = item.copyWith(quantity: newQuantity);
-      await _saveCart(items);
-    }
-    
-    return items;
+
+    await _client.from('cart_items')
+        .update({'quantity': newQuantity})
+        .eq('id', itemId)
+        .eq('user_id', _userId!);
+
+    return await getCartItems();
   }
   
-  // Limpar carrinho
   Future<void> clearCart() async {
-    await prefs.remove(_keyCart);
+    if (_userId == null) return;
+    await _client.from('cart_items').delete().eq('user_id', _userId!);
   }
   
-  // Calcular total
   Future<Map<String, double>> calculateTotals() async {
     final items = await getCartItems();
     
@@ -115,13 +88,9 @@ class CartRepository {
       subtotal += item.subtotal;
     }
     
-    // Calcular frete (mockado - grátis acima de R$ 1000)
-    double shipping = subtotal >= 1000 ? 0 : 30.0;
-    
-    // Desconto (mockado - sem desconto por enquanto)
+    double shipping = 0;
     double discount = 0;
-    
-    double total = subtotal + shipping - discount;
+    double total = subtotal - discount;
     
     return {
       'subtotal': subtotal,
@@ -131,25 +100,14 @@ class CartRepository {
     };
   }
   
-  // Contar itens no carrinho
   Future<int> getItemCount() async {
     final items = await getCartItems();
     return items.fold<int>(0, (sum, item) => sum + item.quantity);
   }
   
-  // Validar carrinho antes do checkout
   Future<bool> validateCart() async {
     final items = await getCartItems();
-    
     if (items.isEmpty) return false;
-    
-    // Verificar se todos os itens são válidos
-    for (var item in items) {
-      if (!item.isValid) return false;
-    }
-    
-    return true;
+    return items.every((item) => item.isValid);
   }
 }
-
-

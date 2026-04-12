@@ -2,13 +2,15 @@ import 'package:equatable/equatable.dart';
 
 class ShoppingList extends Equatable {
   final String id;
+  final String userId;
   final String name;
   final DateTime createdAt;
   final DateTime? updatedAt;
-  final List<String> productIds; // IDs dos produtos
+  final List<String> productIds;
   
   const ShoppingList({
     required this.id,
+    required this.userId,
     required this.name,
     required this.createdAt,
     this.updatedAt,
@@ -19,6 +21,7 @@ class ShoppingList extends Equatable {
   
   ShoppingList copyWith({
     String? id,
+    String? userId,
     String? name,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -26,6 +29,7 @@ class ShoppingList extends Equatable {
   }) {
     return ShoppingList(
       id: id ?? this.id,
+      userId: userId ?? this.userId,
       name: name ?? this.name,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -34,29 +38,40 @@ class ShoppingList extends Equatable {
   }
   
   factory ShoppingList.fromJson(Map<String, dynamic> json) {
+    List<String> productIds = [];
+    if (json['shopping_list_items'] != null && json['shopping_list_items'] is List) {
+      productIds = (json['shopping_list_items'] as List)
+          .map((item) => (item as Map<String, dynamic>)['product_id'] as String)
+          .toList();
+    } else if (json['productIds'] != null) {
+      productIds = List<String>.from(json['productIds'] as List);
+    }
+
     return ShoppingList(
       id: json['id'] as String,
+      userId: json['user_id'] as String? ?? '',
       name: json['name'] as String,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      updatedAt: json['updatedAt'] != null
-          ? DateTime.parse(json['updatedAt'] as String)
-          : null,
-      productIds: List<String>.from(json['productIds'] as List),
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'] as String)
+          : json['createdAt'] != null
+              ? DateTime.parse(json['createdAt'] as String)
+              : DateTime.now(),
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'] as String)
+          : json['updatedAt'] != null
+              ? DateTime.parse(json['updatedAt'] as String)
+              : null,
+      productIds: productIds,
     );
   }
   
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
+      'user_id': userId,
       'name': name,
-      'createdAt': createdAt.toIso8601String(),
-      'updatedAt': updatedAt?.toIso8601String(),
-      'productIds': productIds,
     };
   }
   
   @override
-  List<Object?> get props => [id, name, createdAt, updatedAt, productIds];
+  List<Object?> get props => [id, userId, name, createdAt, updatedAt, productIds];
 }
-
-

@@ -1,148 +1,96 @@
-# Suevit - App Mobile
+# Suevit - Plataforma B2B para Pedidos Farmaceuticos
 
-Aplicativo mobile B2B da Suevit, permitindo que clínicas e farmácias realizem pedidos de medicamentos de forma rápida e segura.
+Aplicativo mobile (Flutter) para compra de produtos farmaceuticos, exclusivo para clinicas e farmacias aprovadas.
 
-## 📱 Sobre o Projeto
+## Stack
 
-Este é o MVP (Minimum Viable Product) do aplicativo Suevit, implementado em Flutter com as funcionalidades principais:
+- **Frontend**: Flutter/Dart com BLoC pattern
+- **Backend**: Supabase (PostgreSQL + Auth + Row Level Security)
+- **State Management**: flutter_bloc + Equatable
+- **UI**: Material 3, Google Fonts (Urbanist)
 
-- ✅ Autenticação (Login com dados mockados)
-- ✅ Catálogo de Produtos com busca e filtros
-- ✅ Detalhes de Produtos
-- ✅ Dashboard/Home com categorias
-- ✅ Perfil de usuário
+## Configuracao
 
-## 🛠️ Tecnologias Utilizadas
+### 1. Supabase
 
-- **Flutter** - Framework cross-platform
-- **BLoC** - Gerenciamento de estado
-- **Equatable** - Comparação de objetos
-- **SharedPreferences** - Persistência local
-- **Google Fonts** - Tipografia
-- **Intl** - Formatação de valores
+1. Crie um projeto no [Supabase](https://supabase.com)
+2. Execute as migrations em `supabase/migrations/` na ordem:
+   - `001_initial_schema.sql` - Tabelas e triggers
+   - `002_rls_policies.sql` - Politicas de seguranca (RLS)
+   - `003_seed_data.sql` - Dados iniciais (categorias e metodos de pagamento)
+3. Copie a URL e anon key do projeto
 
-## 📋 Requisitos
+### 2. Variaveis de Ambiente
 
-- Flutter SDK 3.0.0 ou superior
-- Android SDK (mínimo: API 26 - Android 8.0)
-- Android Gradle Plugin 8.1.1+ ✅
+Copie `.env.example` para `.env` e preencha:
 
-## 🚀 Como Executar
+```
+SUPABASE_URL=https://SEU_PROJECT_ID.supabase.co
+SUPABASE_ANON_KEY=SUA_ANON_KEY_AQUI
+```
 
-### 1. Instalar Dependências
+### 3. Executar
 
 ```bash
 flutter pub get
-```
-
-### 2. Executar o App
-
-```bash
 flutter run
 ```
 
-### 3. Build para Android
+### 4. Seed de Produtos
 
-```bash
-flutter build apk
+Na primeira execucao, importe os 1060 produtos do JSON para o Supabase usando a classe `SeedData`:
+
+```dart
+import 'package:suevit_app/core/utils/seed_data.dart';
+
+await SeedData.seedAll(onProgress: (msg) => print(msg));
 ```
 
-ou para App Bundle:
+### 5. iOS
+
+Para gerar o projeto iOS (requer macOS):
 
 ```bash
-flutter build appbundle
+flutter create . --platforms ios --org com.suevit
 ```
 
-## 👤 Usuários de Teste
-
-Para testar o login, utilize um dos seguintes usuários mockados:
-
-**Farmácia:**
-- Email: `maria@farmaciaexemplo.com.br`
-- Senha: `123456`
-
-**Clínica:**
-- Email: `joao@clinicasaude.com.br`
-- Senha: `123456`
-
-**Drogaria:**
-- Email: `ana@drogariapopular.com.br`
-- Senha: `123456`
-
-## 📂 Estrutura do Projeto
+## Estrutura
 
 ```
 lib/
-├── core/                   # Recursos compartilhados
-│   ├── theme/             # Cores, tipografia, tema
-│   ├── constants/         # Constantes da aplicação
-│   ├── widgets/           # Widgets reutilizáveis
-│   └── utils/             # Utilitários (validators, formatters)
-├── data/                  # Camada de dados
-│   ├── models/            # Modelos (User, Product, Category)
-│   └── repositories/      # Repositórios com dados mock
-├── features/              # Features do app
-│   ├── auth/              # Autenticação
-│   │   ├── bloc/
-│   │   └── presentation/
-│   └── catalog/           # Catálogo de produtos
-│       ├── bloc/
-│       ├── presentation/
-│       └── widgets/
-└── main.dart              # Entry point
-
-assets/
-├── data/                  # JSONs com dados mockados
-│   ├── products.json
-│   ├── users.json
-│   └── categories.json
-├── images/                # Imagens
-└── icons/                 # Ícones
+  core/
+    constants/     # Constantes do app
+    services/      # SupabaseService, VoiceRecognitionService
+    theme/         # Cores, tipografia, tema
+    utils/         # Formatters, Validators, SeedData
+    widgets/       # Widgets reutilizaveis
+  data/
+    models/        # User, Product, Order, CartItem, etc.
+    repositories/  # Auth, Product, Cart, Order, Favorites
+  features/
+    auth/          # Login, Registro, Splash, Aprovacao
+    catalog/       # Home, Lista de Produtos, Detalhes
+    cart/          # Carrinho, Checkout
+    orders/        # Pedidos, Detalhes
+    favorites/     # Favoritos, Listas de Compras
+supabase/
+  migrations/      # SQL para criar schema no Supabase
 ```
 
-## 🎨 Design System
+## Autenticacao
 
-O app utiliza um design system profissional com:
+O app usa autenticacao com sistema de aprovacao:
 
-- **Cores primárias:** Azul (#1E40AF) para ações principais
-- **Cores secundárias:** Verde (#059669) para sucesso
-- **Tipografia:** Inter (Google Fonts)
-- **Componentes:** Botões, campos de texto, cards customizados
+- **Cadastro**: usuario se registra e aguarda aprovacao do admin
+- **Convite**: admin pode criar contas ja aprovadas via Supabase Dashboard
+- **Status**: pending -> approved / rejected
 
-## 📦 Dados Mockados
+Somente usuarios com `status: approved` acessam o catalogo.
 
-O app utiliza dados simulados (mock) armazenados em arquivos JSON:
+## Requisitos
 
-- **30 produtos** variados por categoria
-- **4 usuários** de teste
-- **6 categorias** de medicamentos
-
-## 🔄 Próximas Fases
-
-### Fase 2 (Pendente)
-- Carrinho de compras
-- Checkout e finalização de pedidos
-- Meus Pedidos (histórico)
-- Favoritos e listas
-- Notificações push
-- Perfil completo
-
-### Fase 3 (Pendente)
-- Integração com backend real
-- Sistema de pagamento
-- Tracking de entregas
-- Relatórios e analytics
-
-## 📱 Versões Suportadas
-
-- **Android:** 8.0 (API 26) ou superior
-- **iOS:** (será implementado futuramente)
-
-## 📄 Licença
-
-Copyright © 2025 Suevit Distribuidora. Todos os direitos reservados.
-
-## 🤝 Suporte
-
-Para dúvidas ou problemas, entre em contato com a equipe Suevit.
-
+- Flutter 3.0+
+- Dart 3.0+
+- Conta Supabase (free tier disponivel)
+- Android: API 26+ (Android 8.0)
+- iOS: requer macOS para build

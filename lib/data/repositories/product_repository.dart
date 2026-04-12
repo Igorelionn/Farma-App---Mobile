@@ -1,75 +1,89 @@
-import 'dart:convert';
-import 'package:flutter/services.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/product.dart';
 import '../models/category.dart';
-import '../../core/constants/app_constants.dart';
+import '../../core/services/supabase_service.dart';
 
 class ProductRepository {
-  List<Product>? _cachedProducts;
-  List<Category>? _cachedCategories;
+  SupabaseClient get _client => SupabaseService.client;
   
   Future<List<Product>> getAllProducts() async {
-    if (_cachedProducts != null) {
-      return _cachedProducts!;
-    }
+    final response = await _client.from('products')
+        .select('*, categories(nome)')
+        .eq('disponivel', true)
+        .order('nome');
     
-    // Simular delay de API
-    await Future.delayed(AppConstants.apiDelay);
-    
-    final String response = await rootBundle.loadString('assets/data/products.json');
-    final List<dynamic> productsJson = json.decode(response);
-    
-    _cachedProducts = productsJson.map((json) => Product.fromJson(json)).toList();
-    return _cachedProducts!;
+    return (response as List)
+        .map((json) => Product.fromJson(json as Map<String, dynamic>))
+        .toList();
   }
   
   Future<List<Category>> getCategories() async {
-    if (_cachedCategories != null) {
-      return _cachedCategories!;
-    }
+    final response = await _client.from('categories')
+        .select()
+        .order('nome');
     
-    // Simular delay de API
-    await Future.delayed(AppConstants.apiDelay);
-    
-    final String response = await rootBundle.loadString('assets/data/categories.json');
-    final List<dynamic> categoriesJson = json.decode(response);
-    
-    _cachedCategories = categoriesJson.map((json) => Category.fromJson(json)).toList();
-    return _cachedCategories!;
+    return (response as List)
+        .map((json) => Category.fromJson(json as Map<String, dynamic>))
+        .toList();
   }
   
   Future<Product?> getProductById(String id) async {
-    final products = await getAllProducts();
-    try {
-      return products.firstWhere((product) => product.id == id);
-    } catch (e) {
-      return null;
-    }
+    final response = await _client.from('products')
+        .select('*, categories(nome)')
+        .eq('id', id)
+        .maybeSingle();
+
+    if (response == null) return null;
+    return Product.fromJson(response);
   }
   
-  Future<List<Product>> getProductsByCategory(String category) async {
-    final products = await getAllProducts();
-    return products.where((product) => product.categoria == category).toList();
+  Future<List<Product>> getProductsByCategory(String categoryId) async {
+    final response = await _client.from('products')
+        .select('*, categories(nome)')
+        .eq('category_id', categoryId)
+        .eq('disponivel', true)
+        .order('nome');
+    
+    return (response as List)
+        .map((json) => Product.fromJson(json as Map<String, dynamic>))
+        .toList();
   }
   
   Future<List<Product>> searchProducts(String query) async {
     if (query.isEmpty) {
       return await getAllProducts();
     }
-    
-    final products = await getAllProducts();
-    final lowerQuery = query.toLowerCase();
-    
-    return products.where((product) {
-      return product.nome.toLowerCase().contains(lowerQuery) ||
-             (product.principioAtivo?.toLowerCase().contains(lowerQuery) ?? false) ||
-             product.laboratorio.toLowerCase().contains(lowerQuery);
-    }).toList();
+
+    // Sanitiza a query: remove caracteres que podem alterar o filtro ilike
+    final sanitized = query
+        .replaceAll(RegExp(r'[%_\\]'), r'\\$0')
+        .trim();
+
+    final response = await _client.from('products')
+        .select('*, categories(nome)')
+        .eq('disponivel', true)
+        .or(
+          'nome.ilike.%$sanitized%,'
+          'principio_ativo.ilike.%$sanitized%,'
+          'laboratorio.ilike.%$sanitized%',
+        )
+        .order('nome');
+
+    return (response as List)
+        .map((json) => Product.fromJson(json as Map<String, dynamic>))
+        .toList();
   }
   
   Future<List<Product>> getPromotionalProducts() async {
-    final products = await getAllProducts();
-    return products.where((product) => product.emPromocao).toList();
+    final response = await _client.from('products')
+        .select('*, categories(nome)')
+        .eq('em_promocao', true)
+        .eq('disponivel', true)
+        .order('nome');
+    
+    return (response as List)
+        .map((json) => Product.fromJson(json as Map<String, dynamic>))
+        .toList();
   }
   
   Future<List<Product>> filterProducts({
@@ -78,54 +92,70 @@ class ProductRepository {
     double? minPrice,
     double? maxPrice,
     bool? disponivel,
-    String? sortBy, // 'preco_asc', 'preco_desc', 'nome_asc'
+    String? sortBy,
   }) async {
-    List<Product> products = await getAllProducts();
+    var query = _client.from('products')
+        .select('*, categories(nome)');
     
-    // Aplicar filtros
     if (category != null && category.isNotEmpty) {
-      products = products.where((p) => p.categoria == category).toList();
+      query = query.eq('category_id', category);
     }
     
     if (laboratorio != null && laboratorio.isNotEmpty) {
-      products = products.where((p) => p.laboratorio == laboratorio).toList();
+      query = query.eq('laboratorio', laboratorio);
     }
     
     if (minPrice != null) {
-      products = products.where((p) => p.precoFinal >= minPrice).toList();
+      query = query.gte('preco', minPrice);
     }
     
     if (maxPrice != null) {
-      products = products.where((p) => p.precoFinal <= maxPrice).toList();
+      query = query.lte('preco', maxPrice);
     }
     
-    if (disponivel != null && disponivel) {
-      products = products.where((p) => p.disponivel && p.estoque > 0).toList();
+    if (disponivel == true) {
+      query = query.eq('disponivel', true).gt('estoque', 0);
     }
-    
-    // Ordenar
+
+    String orderColumn = 'nome';
+    bool ascending = true;
     if (sortBy != null) {
       switch (sortBy) {
         case 'preco_asc':
-          products.sort((a, b) => a.precoFinal.compareTo(b.precoFinal));
+          orderColumn = 'preco';
+          ascending = true;
           break;
         case 'preco_desc':
-          products.sort((a, b) => b.precoFinal.compareTo(a.precoFinal));
+          orderColumn = 'preco';
+          ascending = false;
           break;
         case 'nome_asc':
-          products.sort((a, b) => a.nome.compareTo(b.nome));
+          orderColumn = 'nome';
+          ascending = true;
           break;
       }
     }
+
+    final response = await query.order(orderColumn, ascending: ascending);
     
-    return products;
+    return (response as List)
+        .map((json) => Product.fromJson(json as Map<String, dynamic>))
+        .toList();
   }
   
   Future<List<String>> getLaboratorios() async {
-    final products = await getAllProducts();
-    final laboratorios = products.map((p) => p.laboratorio).toSet().toList();
-    laboratorios.sort();
-    return laboratorios;
+    final response = await _client.from('products')
+        .select('laboratorio')
+        .eq('disponivel', true)
+        .order('laboratorio');
+
+    final labs = (response as List)
+        .map((json) => json['laboratorio'] as String?)
+        .whereType<String>()
+        .where((l) => l.isNotEmpty)
+        .toSet()
+        .toList();
+    labs.sort();
+    return labs;
   }
 }
-

@@ -121,12 +121,12 @@ class OrderDetailsScreen extends StatelessWidget {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  item.product.nome,
+                                  item.product?.nome ?? 'Produto',
                                   style: AppTextStyles.labelMedium,
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  item.product.laboratorio,
+                                  item.product?.laboratorio ?? '',
                                   style: AppTextStyles.caption,
                                 ),
                                 const SizedBox(height: 4),
@@ -160,9 +160,9 @@ class OrderDetailsScreen extends StatelessWidget {
                   children: [
                     Text('Endereço de Entrega', style: AppTextStyles.h6),
                     const Divider(height: 24),
-                    Text(order.address.label, style: AppTextStyles.labelMedium),
+                    Text(order.address?.label ?? 'Endereço não disponível', style: AppTextStyles.labelMedium),
                     const SizedBox(height: 4),
-                    Text(order.address.fullAddress, style: AppTextStyles.bodySmall),
+                    Text(order.address?.fullAddress ?? '', style: AppTextStyles.bodySmall),
                   ],
                 ),
               ),
@@ -179,10 +179,10 @@ class OrderDetailsScreen extends StatelessWidget {
                   children: [
                     Text('Pagamento', style: AppTextStyles.h6),
                     const Divider(height: 24),
-                    Text(order.paymentMethod.label, style: AppTextStyles.labelMedium),
-                    if (order.paymentMethod.description != null)
+                    Text(order.paymentMethod?.label ?? 'Não informado', style: AppTextStyles.labelMedium),
+                    if (order.paymentMethod?.description != null)
                       Text(
-                        order.paymentMethod.description!,
+                        order.paymentMethod!.description!,
                         style: AppTextStyles.caption,
                       ),
                   ],
@@ -234,6 +234,9 @@ class OrderDetailsScreen extends StatelessWidget {
     switch (order.status) {
       case OrderStatus.pending:
         color = AppColors.warning;
+        break;
+      case OrderStatus.confirmed:
+        color = const Color(0xFF8B5CF6);
         break;
       case OrderStatus.processing:
         color = AppColors.info;

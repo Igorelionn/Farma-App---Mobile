@@ -54,6 +54,10 @@ class OrderTimeline extends StatelessWidget {
         icon = Icons.schedule;
         color = AppColors.warning;
         break;
+      case OrderStatus.confirmed:
+        icon = Icons.thumb_up_alt_outlined;
+        color = const Color(0xFF8B5CF6);
+        break;
       case OrderStatus.processing:
         icon = Icons.inventory_2;
         color = AppColors.info;
@@ -150,6 +154,8 @@ class OrderTimeline extends StatelessWidget {
     switch (status) {
       case OrderStatus.pending:
         return 'Pedido Pendente';
+      case OrderStatus.confirmed:
+        return 'Confirmado';
       case OrderStatus.processing:
         return 'Em Separação';
       case OrderStatus.shipped:
