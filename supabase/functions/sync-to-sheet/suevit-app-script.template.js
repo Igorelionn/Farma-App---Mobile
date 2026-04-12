@@ -1,6 +1,17 @@
-// Configurações
-const SUPABASE_URL = 'https://klepqdiqpochlkrfyapd.supabase.co';
-const SYNC_SECRET = 'SuevitSync2026!SecureKey#Farma';
+// ============================================================
+// TEMPLATE: Google Apps Script - Webhook Receiver
+// ============================================================
+// INSTRUÇÕES:
+// 1. Copie este arquivo para seu Google Apps Script
+// 2. Configure as variáveis usando Script Properties:
+//    - Vá em Project Settings > Script Properties
+//    - Adicione: SUPABASE_URL, SYNC_SECRET
+// 3. Deploy como Web App e copie a URL para GOOGLE_SHEET_WEBHOOK_URL
+// ============================================================
+
+// Configurações - USAR Script Properties Service
+const SUPABASE_URL = PropertiesService.getScriptProperties().getProperty('SUPABASE_URL') || 'YOUR_SUPABASE_URL';
+const SYNC_SECRET = PropertiesService.getScriptProperties().getProperty('SYNC_SECRET') || 'YOUR_SYNC_SECRET';
 const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/sync-products`;
 
 // Sincronização automática quando editar a planilha
@@ -96,6 +107,7 @@ function testSync() {
   Logger.log(`Teste concluído: ${count} produtos sincronizados`);
 }
 
+// Webhook receiver - recebe atualizações do Supabase
 function doPost(e) {
   const lock = LockService.getScriptLock();
   
@@ -106,11 +118,6 @@ function doPost(e) {
       Logger.log('❌ No data received');
       return createResponse({ error: 'No data received' });
     }
-    
-    // ✅ CORRIGIDO: Google Apps Script Web Apps não passa query params em e.parameter
-    // Precisamos extrair da URL ou aceitar sem validação de secret
-    Logger.log('🔍 e.parameter: ' + JSON.stringify(e.parameter));
-    Logger.log('🔍 e.queryString: ' + e.queryString);
     
     // Extrair secret da queryString manualmente
     let receivedSecret = '';
@@ -125,13 +132,8 @@ function doPost(e) {
       }
     }
     
-    Logger.log('🔑 Received secret: ' + (receivedSecret ? 'YES' : 'NO'));
-    Logger.log('🔑 Secret value: ' + receivedSecret);
-    
     if (receivedSecret !== SYNC_SECRET) {
       Logger.log('❌ Unauthorized - secret mismatch');
-      Logger.log('❌ Expected: ' + SYNC_SECRET);
-      Logger.log('❌ Received: ' + receivedSecret);
       return createResponse({ error: 'Unauthorized' });
     }
     
@@ -200,72 +202,4 @@ function updateProductInSheet(sheet, product) {
 function createResponse(data) {
   return ContentService.createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
-}
-function testDoPost() {
-  const mockEvent = {
-    postData: {
-      contents: JSON.stringify({
-        action: 'update',
-        product: {
-          codigo: '2555',
-          descricao: 'NUTRI RD 2.0 BAU TP 200ML',
-          estoque: 150,
-          vlr_unit: 10.50,
-          fabricante: 'Teste'
-        }
-      })
-    },
-    parameter: {
-      'x-sync-secret': 'SuevitSync2026!SecureKey#Farma'
-    }
-  };
-  
-  const result = doPost(mockEvent);
-  Logger.log('Resultado: ' + result.getContent());
-}
-function debugLastExecution() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
-  
-  // Testar manualmente
-  const mockEvent = {
-    postData: {
-      contents: JSON.stringify({
-        action: 'update',
-        product: {
-          codigo: '2555',
-          descricao: 'NUTRI RD 2.0 BAU TP 200ML',
-          estoque: 350,
-          vlr_unit: 10.50,
-          fabricante: 'Teste'
-        }
-      })
-    },
-    parameter: {
-      'x-sync-secret': 'SuevitSync2026!SecureKey#Farma'
-    }
-  };
-  
-  // Chamar doPost
-  const result = doPost(mockEvent);
-  
-  // Escrever resultado na célula A1
-  sheet.getRange('A1').setValue('DEBUG: ' + Logger.getLog());
-  
-  SpreadsheetApp.getUi().alert('Teste concluído! Veja a célula A1');
-}
-function testUpdateRow() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
-  const product = {
-    codigo: '2555',
-    descricao: 'NUTRI RD 2.0 BAU TP 200ML',
-    estoque: 700,
-    vlr_unit: 33.83,
-    fabricante: 'NUTRIMED'
-  };
-  
-  Logger.log('🔍 Iniciando teste...');
-  updateProductInSheet(sheet, product);
-  Logger.log('✅ Teste concluído! Verifique linha 770');
-  
-  SpreadsheetApp.getUi().alert('Teste concluído! Veja a linha 770');
 }

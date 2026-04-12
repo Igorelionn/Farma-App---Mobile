@@ -25,6 +25,16 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
+    // Validar autenticação via x-sync-secret header
+    const syncSecret = req.headers.get('x-sync-secret');
+    if (!SYNC_SECRET || syncSecret !== SYNC_SECRET) {
+      console.warn('⚠️ Unauthorized access attempt');
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const payload: ProductUpdatePayload = await req.json();
     
     console.log('📦 Received webhook payload:', payload.type, payload.table);
@@ -91,12 +101,10 @@ Deno.serve(async (req: Request) => {
     // Enviar para Google Sheet
     if (sheetData && GOOGLE_SHEET_WEBHOOK_URL) {
       console.log('📤 Sending to Google Sheet:', sheetData.action);
-      console.log('🔗 Base URL:', GOOGLE_SHEET_WEBHOOK_URL);
-      console.log('📦 Payload:', JSON.stringify(sheetData));
       
       // Google Apps Script precisa do secret como parâmetro de URL
       const urlWithSecret = `${GOOGLE_SHEET_WEBHOOK_URL}?secret=${encodeURIComponent(SYNC_SECRET)}`;
-      console.log('🔗 Full URL:', urlWithSecret);
+      // NÃO logar a URL completa com o secret em produção
       
       const sheetResponse = await fetch(urlWithSecret, {
         method: 'POST',
@@ -108,16 +116,16 @@ Deno.serve(async (req: Request) => {
 
       const responseText = await sheetResponse.text();
       console.log('📥 Response status:', sheetResponse.status);
-      console.log('📥 Response body:', responseText);
 
       if (!sheetResponse.ok) {
-        console.error('❌ Google Sheet update failed');
-        throw new Error(`Google Sheet update failed: ${sheetResponse.status} - ${responseText}`);
+        console.error('❌ Google Sheet update failed with status:', sheetResponse.status);
+        // Não logar o corpo completo da resposta que pode conter dados sensíveis
+        throw new Error(`Google Sheet update failed with status ${sheetResponse.status}`);
       }
 
       console.log('✅ Google Sheet updated successfully');
     } else {
-      console.warn('⚠️ Not sending - sheetData:', !!sheetData, 'URL:', !!GOOGLE_SHEET_WEBHOOK_URL);
+      console.warn('⚠️ Not sending - missing configuration');
     }
 
     // Log da sincronização
@@ -134,7 +142,7 @@ Deno.serve(async (req: Request) => {
     );
 
   } catch (err) {
-    console.error('❌ Error:', err);
+    console.error('❌ Internal error:', err);
     
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     await supabase.from('sync_log').insert({
@@ -142,11 +150,12 @@ Deno.serve(async (req: Request) => {
       action: 'error',
       records_affected: 0,
       status: 'error',
-      error_message: err.message || String(err),
+      error_message: err instanceof Error ? err.message : 'Unknown error',
     });
 
+    // Não expor detalhes do erro ao cliente
     return new Response(
-      JSON.stringify({ error: err.message || 'Internal server error' }),
+      JSON.stringify({ error: 'Internal server error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

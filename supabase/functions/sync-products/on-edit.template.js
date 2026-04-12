@@ -1,6 +1,17 @@
-// Configurações
-const SUPABASE_URL = 'https://klepqdiqpochlkrfyapd.supabase.co';
-const SYNC_SECRET = 'SuevitSync2026!SecureKey#Farma';
+// ============================================================
+// TEMPLATE: Google Apps Script - Sincronização Instantânea
+// ============================================================
+// INSTRUÇÕES:
+// 1. Copie este arquivo para seu Google Apps Script
+// 2. Configure as variáveis abaixo usando Script Properties:
+//    - Vá em Project Settings > Script Properties
+//    - Adicione: SUPABASE_URL, SYNC_SECRET
+// 3. Ou configure diretamente no código (NÃO commitar se fizer isso)
+// ============================================================
+
+// Configurações - USAR Script Properties Service
+const SUPABASE_URL = PropertiesService.getScriptProperties().getProperty('SUPABASE_URL') || 'YOUR_SUPABASE_URL';
+const SYNC_SECRET = PropertiesService.getScriptProperties().getProperty('SYNC_SECRET') || 'YOUR_SYNC_SECRET';
 const EDGE_FUNCTION_URL = `${SUPABASE_URL}/functions/v1/sync-products`;
 
 // Função auxiliar para limpar e converter preços (formato brasileiro)
@@ -252,6 +263,7 @@ function testSync() {
   Logger.log(`Teste concluído: ${count} produtos sincronizados`);
 }
 
+// Webhook receiver - recebe atualizações do Supabase
 function doPost(e) {
   const lock = LockService.getScriptLock();
   
@@ -262,11 +274,6 @@ function doPost(e) {
       Logger.log('❌ No data received');
       return createResponse({ error: 'No data received' });
     }
-    
-    // ✅ CORRIGIDO: Google Apps Script Web Apps não passa query params em e.parameter
-    // Precisamos extrair da URL ou aceitar sem validação de secret
-    Logger.log('🔍 e.parameter: ' + JSON.stringify(e.parameter));
-    Logger.log('🔍 e.queryString: ' + e.queryString);
     
     // Extrair secret da queryString manualmente
     let receivedSecret = '';
@@ -281,13 +288,8 @@ function doPost(e) {
       }
     }
     
-    Logger.log('🔑 Received secret: ' + (receivedSecret ? 'YES' : 'NO'));
-    Logger.log('🔑 Secret value: ' + receivedSecret);
-    
     if (receivedSecret !== SYNC_SECRET) {
       Logger.log('❌ Unauthorized - secret mismatch');
-      Logger.log('❌ Expected: ' + SYNC_SECRET);
-      Logger.log('❌ Received: ' + receivedSecret);
       return createResponse({ error: 'Unauthorized' });
     }
     
@@ -356,139 +358,4 @@ function updateProductInSheet(sheet, product) {
 function createResponse(data) {
   return ContentService.createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
-}
-function testDoPost() {
-  const mockEvent = {
-    postData: {
-      contents: JSON.stringify({
-        action: 'update',
-        product: {
-          codigo: '2555',
-          descricao: 'NUTRI RD 2.0 BAU TP 200ML',
-          estoque: 150,
-          vlr_unit: 10.50,
-          fabricante: 'Teste'
-        }
-      })
-    },
-    parameter: {
-      'x-sync-secret': 'SuevitSync2026!SecureKey#Farma'
-    }
-  };
-  
-  const result = doPost(mockEvent);
-  Logger.log('Resultado: ' + result.getContent());
-}
-function debugLastExecution() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
-  
-  // Testar manualmente
-  const mockEvent = {
-    postData: {
-      contents: JSON.stringify({
-        action: 'update',
-        product: {
-          codigo: '2555',
-          descricao: 'NUTRI RD 2.0 BAU TP 200ML',
-          estoque: 350,
-          vlr_unit: 10.50,
-          fabricante: 'Teste'
-        }
-      })
-    },
-    parameter: {
-      'x-sync-secret': 'SuevitSync2026!SecureKey#Farma'
-    }
-  };
-  
-  // Chamar doPost
-  const result = doPost(mockEvent);
-  
-  // Escrever resultado na célula A1
-  sheet.getRange('A1').setValue('DEBUG: ' + Logger.getLog());
-  
-  SpreadsheetApp.getUi().alert('Teste concluído! Veja a célula A1');
-}
-function testUpdateRow() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
-  const product = {
-    codigo: '2555',
-    descricao: 'NUTRI RD 2.0 BAU TP 200ML',
-    estoque: 700,
-    vlr_unit: 33.83,
-    fabricante: 'NUTRIMED'
-  };
-  
-  Logger.log('🔍 Iniciando teste...');
-  updateProductInSheet(sheet, product);
-  Logger.log('✅ Teste concluído! Verifique linha 770');
-  
-  SpreadsheetApp.getUi().alert('Teste concluído! Veja a linha 770');
-}
-function debugFindProduct() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
-  const values = sheet.getDataRange().getValues();
-  const headers = values[0];
-  
-  const colCodigo = headers.indexOf('CÓDIGO');
-  
-  Logger.log('🔍 Coluna CÓDIGO está na posição: ' + colCodigo);
-  Logger.log('🔍 Procurando código: 2555');
-  
-  // Mostrar os primeiros 10 códigos
-  Logger.log('📋 Primeiros códigos encontrados:');
-  for (let i = 1; i < Math.min(11, values.length); i++) {
-    const codigo = values[i][colCodigo];
-    Logger.log(`  Linha ${i+1}: [${codigo}] tipo: ${typeof codigo}`);
-  }
-  
-  // Procurar especificamente o 2555
-  Logger.log('🔎 Procurando especificamente 2555...');
-  for (let i = 1; i < values.length; i++) {
-    const codigo = values[i][colCodigo];
-    if (String(codigo).includes('2555')) {
-      Logger.log(`✅ ENCONTRADO na linha ${i+1}: [${codigo}] tipo: ${typeof codigo}`);
-    }
-  }
-  
-  SpreadsheetApp.getUi().alert('Debug concluído! Veja os logs');
-}
-function debugHeaders() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  
-  Logger.log('📋 TODOS OS CABEÇALHOS DA PLANILHA:');
-  for (let i = 0; i < headers.length; i++) {
-    Logger.log(`  Coluna ${i}: [${headers[i]}]`);
-  }
-  
-  SpreadsheetApp.getUi().alert('Headers listados! Veja os logs');
-}
-function findValue2555() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
-  const data = sheet.getDataRange().getValues();
-  const headers = data[0];
-  
-  Logger.log('🔎 Procurando valor 2555 em TODAS as colunas...');
-  
-  for (let i = 1; i < data.length; i++) {
-    for (let j = 0; j < data[i].length; j++) {
-      const value = String(data[i][j]);
-      if (value.includes('2555')) {
-        Logger.log(`✅ ENCONTRADO na linha ${i+1}, coluna ${j} (${headers[j]}): [${data[i][j]}]`);
-      }
-    }
-  }
-  
-  SpreadsheetApp.getUi().alert('Busca concluída! Veja os logs');
-}
-function fixHeader() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
-  sheet.getRange('A1').setValue('CÓDIGO');
-  SpreadsheetApp.getUi().alert('Cabeçalho corrigido! A célula A1 agora tem "CÓDIGO"');
-}
-function testSyncSingle() {
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
-  Logger.log('🧪 Testando sincronização da linha 770...');
-  syncSingleRow(sheet, 770);
 }

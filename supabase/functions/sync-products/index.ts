@@ -1,5 +1,13 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import {
+  validateSyncSecret,
+  validateSyncProductsPayload,
+  createErrorResponse,
+  createSuccessResponse,
+  checkRateLimit,
+  addRateLimitHeaders
+} from '../_shared/validation.ts';
 
 const SYNC_SECRET = Deno.env.get('SYNC_SECRET') || '';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -104,31 +112,40 @@ Deno.serve(async (req: Request) => {
 
   try {
     if (req.method !== 'POST') {
-      return new Response(
-        JSON.stringify({ error: 'Method not allowed' }),
-        { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return createErrorResponse('Method not allowed', 405, corsHeaders);
     }
 
-    const syncSecret = req.headers.get('x-sync-secret');
-    if (!SYNC_SECRET || syncSecret !== SYNC_SECRET) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Rate limiting
+    const rateLimitResponse = checkRateLimit(req, corsHeaders);
+    if (rateLimitResponse) {
+      return rateLimitResponse;
     }
 
+    // Validar secret
+    const secretValidation = validateSyncSecret(req, SYNC_SECRET);
+    if (!secretValidation.success) {
+      return createErrorResponse(secretValidation.error, 401, corsHeaders);
+    }
+
+    // Validar payload
+    const body = await req.json();
+    const payloadValidation = validateSyncProductsPayload(body);
+    if (!payloadValidation.success) {
+      return createErrorResponse(payloadValidation.error, 400, corsHeaders);
+    }
+
+    const payload = payloadValidation.data!;
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-    const payload: SyncPayload = await req.json();
 
-    if (payload.action === 'upsert' && payload.product) {
-      const params = mapProduct(payload.product);
+    if (payload.action === 'upsert' && payload.products && payload.products.length > 0) {
+      const product = payload.products[0];
+      const params = mapProduct(product);
       const { data, error } = await supabase.rpc('upsert_product_from_excel', params);
       if (error) throw error;
 
-      return new Response(
-        JSON.stringify({ success: true, product_id: data, action: 'upsert' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      return createSuccessResponse(
+        { success: true, product_id: data, action: 'upsert' },
+        corsHeaders
       );
     }
 
@@ -138,7 +155,7 @@ Deno.serve(async (req: Request) => {
         nome: p.descricao || '',
         laboratorio: p.fabricante || '',
         preco: p.vlr_unit || 0,
-        estoque: Math.floor(Number(p.estoque) || 0), // Garantir que seja inteiro
+        estoque: Math.floor(Number(p.estoque) || 0),
         codigo_barras: p.codigo_ean ? String(p.codigo_ean) : null,
         unidade: p.und || 'UN',
         classificacao_fiscal: p.class_fiscal ? String(p.class_fiscal) : null,
@@ -153,17 +170,17 @@ Deno.serve(async (req: Request) => {
       });
       if (error) throw error;
 
-      return new Response(
-        JSON.stringify({ success: true, synced_count: data, action: 'bulk_sync' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      return createSuccessResponse(
+        { success: true, synced_count: data, action: 'bulk_sync' },
+        corsHeaders
       );
     }
 
-    if (payload.action === 'delete' && payload.product?.codigo) {
+    if (payload.action === 'delete' && payload.codigo) {
       const { error } = await supabase
         .from('products')
         .update({ disponivel: false })
-        .eq('excel_row_id', String(payload.product.codigo));
+        .eq('excel_row_id', String(payload.codigo));
       if (error) throw error;
 
       await supabase.from('sync_log').insert({
@@ -173,16 +190,13 @@ Deno.serve(async (req: Request) => {
         status: 'success',
       });
 
-      return new Response(
-        JSON.stringify({ success: true, action: 'delete' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      return createSuccessResponse(
+        { success: true, action: 'delete' },
+        corsHeaders
       );
     }
 
-    return new Response(
-      JSON.stringify({ error: 'Invalid payload' }),
-      { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return createErrorResponse('Invalid payload', 400, corsHeaders);
 
   } catch (err) {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -191,12 +205,9 @@ Deno.serve(async (req: Request) => {
       action: 'error',
       records_affected: 0,
       status: 'error',
-      error_message: err.message || String(err),
+      error_message: err instanceof Error ? err.message : 'Unknown error',
     });
 
-    return new Response(
-      JSON.stringify({ error: err.message || 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return createErrorResponse(err, 500, corsHeaders);
   }
 });
