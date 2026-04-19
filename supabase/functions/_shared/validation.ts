@@ -45,6 +45,7 @@ export interface ProductInput {
   codigo_ean?: string;
   und?: string;
   class_fiscal?: string;
+  imagem_url?: string;
 }
 
 export interface SyncProductsPayload {

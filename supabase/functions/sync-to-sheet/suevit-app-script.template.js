@@ -119,18 +119,9 @@ function doPost(e) {
       return createResponse({ error: 'No data received' });
     }
     
-    // Extrair secret da queryString manualmente
-    let receivedSecret = '';
-    if (e.queryString) {
-      const params = e.queryString.split('&');
-      for (let param of params) {
-        const [key, value] = param.split('=');
-        if (key === 'secret') {
-          receivedSecret = decodeURIComponent(value);
-          break;
-        }
-      }
-    }
+    // Buscar secret do header (mais seguro que query string)
+    const receivedSecret = e.parameter['x-sync-secret'] || 
+                          (e.headers && e.headers['x-sync-secret']);
     
     if (receivedSecret !== SYNC_SECRET) {
       Logger.log('❌ Unauthorized - secret mismatch');

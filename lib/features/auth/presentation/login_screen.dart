@@ -391,7 +391,7 @@ class _AnimatedLoginButton extends StatelessWidget {
         duration: const Duration(milliseconds: 400),
         curve: Curves.easeInOut,
         decoration: BoxDecoration(
-          color: showError ? AppColors.error : _kEmerald,
+          color: showError ? AppColors.error : AppColors.navBarBackground,
           borderRadius: BorderRadius.circular(14),
         ),
         child: Material(
@@ -449,7 +449,7 @@ class _AnimatedLoginButton extends StatelessWidget {
         height: 24,
         child: CircularProgressIndicator(
           strokeWidth: 2.5,
-          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
         ),
       );
     }
@@ -482,7 +482,7 @@ class _AnimatedLoginButton extends StatelessWidget {
       style: GoogleFonts.urbanist(
         fontSize: 16,
         fontWeight: FontWeight.w600,
-        color: Colors.white,
+        color: AppColors.primary,
         letterSpacing: 0.5,
       ),
     );
@@ -848,7 +848,7 @@ class _AnimatedSubmitButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color buttonColor = _kGreen;
+    Color buttonColor = AppColors.navBarBackground;
     if (showSuccess) {
       buttonColor = const Color(0xFF10B981); // Verde vibrante e moderno
     } else if (showError) {
@@ -918,7 +918,7 @@ class _AnimatedSubmitButton extends StatelessWidget {
         height: 20,
         child: CircularProgressIndicator(
           strokeWidth: 2,
-          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
         ),
       );
     }
@@ -959,7 +959,7 @@ class _AnimatedSubmitButton extends StatelessWidget {
       style: GoogleFonts.urbanist(
         fontSize: 14,
         fontWeight: FontWeight.w600,
-        color: Colors.white,
+        color: AppColors.primary,
       ),
     );
   }

@@ -138,13 +138,17 @@ Deno.serve(async (req: Request) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     if (payload.action === 'upsert' && payload.products && payload.products.length > 0) {
-      const product = payload.products[0];
-      const params = mapProduct(product);
-      const { data, error } = await supabase.rpc('upsert_product_from_excel', params);
-      if (error) throw error;
+      // Processar todos os produtos do array, não apenas o primeiro
+      const results: string[] = [];
+      for (const product of payload.products) {
+        const params = mapProduct(product);
+        const { data, error } = await supabase.rpc('upsert_product_from_excel', params);
+        if (error) throw error;
+        results.push(data);
+      }
 
       return createSuccessResponse(
-        { success: true, product_id: data, action: 'upsert' },
+        { success: true, product_ids: results, count: results.length, action: 'upsert' },
         corsHeaders
       );
     }

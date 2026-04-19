@@ -1,5 +1,12 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import {
+  validateSyncSecret,
+  validateSearchProductImagesBody,
+  createErrorResponse,
+  createSuccessResponse,
+  checkRateLimit
+} from '../_shared/validation.ts';
 
 const SYNC_SECRET = Deno.env.get('SYNC_SECRET') || '';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -43,28 +50,35 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const syncSecret = req.headers.get('x-sync-secret');
-    if (!SYNC_SECRET || syncSecret !== SYNC_SECRET) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Rate limiting
+    const rateLimitResponse = checkRateLimit(req, corsHeaders);
+    if (rateLimitResponse) {
+      return rateLimitResponse;
+    }
+
+    // Validar secret
+    const secretValidation = validateSyncSecret(req, SYNC_SECRET);
+    if (!secretValidation.success) {
+      return createErrorResponse(secretValidation.error, 401, corsHeaders);
     }
 
     if (!GOOGLE_API_KEY || !SEARCH_ENGINE_ID) {
-      return new Response(
-        JSON.stringify({
-          error: 'Google Search API not configured',
-          help: 'Set GOOGLE_SEARCH_API_KEY and GOOGLE_SEARCH_ENGINE_ID in Edge Function secrets'
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      return createErrorResponse(
+        'Google Search API not configured. Set GOOGLE_SEARCH_API_KEY and GOOGLE_SEARCH_ENGINE_ID',
+        400,
+        corsHeaders
       );
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    // Validar body
     const body = await req.json();
-    const limit = body.limit || 10;
-    const offset = body.offset || 0;
+    const paramsValidation = validateSearchProductImagesBody(body);
+    if (!paramsValidation.success) {
+      return createErrorResponse(paramsValidation.error, 400, corsHeaders);
+    }
+
+    const { limit, offset } = paramsValidation.data!;
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const { data: products, error } = await supabase
       .from('products')
@@ -75,9 +89,9 @@ Deno.serve(async (req: Request) => {
 
     if (error) throw error;
     if (!products || products.length === 0) {
-      return new Response(
-        JSON.stringify({ message: 'No products without images found', updated: 0 }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      return createSuccessResponse(
+        { message: 'No products without images found', updated: 0 },
+        corsHeaders
       );
     }
 
@@ -102,20 +116,17 @@ Deno.serve(async (req: Request) => {
       await new Promise(r => setTimeout(r, 100));
     }
 
-    return new Response(
-      JSON.stringify({
+    return createSuccessResponse(
+      {
         processed: products.length,
         updated,
         remaining_without_images: 'run again with offset=' + (offset + limit),
         results,
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      },
+      corsHeaders
     );
 
   } catch (err) {
-    return new Response(
-      JSON.stringify({ error: err.message || 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return createErrorResponse(err, 500, corsHeaders);
   }
 });

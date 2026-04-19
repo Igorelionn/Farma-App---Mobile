@@ -1,4 +1,7 @@
+import 'dart:async';
+import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:http/http.dart' as http;
 import '../../../data/repositories/cart_repository.dart';
 import 'cart_event.dart';
 import 'cart_state.dart';
@@ -12,6 +15,47 @@ class CartBloc extends Bloc<CartEvent, CartState> {
     on<RemoveFromCart>(_onRemoveFromCart);
     on<UpdateQuantity>(_onUpdateQuantity);
     on<ClearCart>(_onClearCart);
+  }
+
+  String _getFriendlyErrorMessage(dynamic error) {
+    final errorStr = error.toString().toLowerCase();
+    
+    if (error is SocketException || errorStr.contains('socket')) {
+      return 'Sem conexão com a internet. Verifique sua conexão e tente novamente.';
+    }
+    
+    if (error is TimeoutException || errorStr.contains('timeout')) {
+      return 'A conexão demorou muito. Verifique sua internet e tente novamente.';
+    }
+    
+    if (error is http.ClientException || 
+        errorStr.contains('clientexception') || 
+        errorStr.contains('connection closed') ||
+        errorStr.contains('failed host lookup')) {
+      return 'Erro de conexão. Verifique sua internet e tente novamente.';
+    }
+    
+    if (errorStr.contains('estoque insuficiente') || errorStr.contains('sem estoque')) {
+      return 'Produto sem estoque suficiente';
+    }
+    
+    if (errorStr.contains('produto não disponível') || errorStr.contains('indisponível')) {
+      return 'Produto não está mais disponível';
+    }
+    
+    if (errorStr.contains('carrinho vazio')) {
+      return 'Carrinho vazio';
+    }
+    
+    // Retorna mensagem original se for algo específico
+    String message = error.toString().replaceAll('Exception: ', '');
+    if (!message.toLowerCase().contains('exception') && 
+        !message.contains('Error:') &&
+        message.length < 100) {
+      return message;
+    }
+    
+    return 'Erro ao processar operação. Tente novamente.';
   }
   
   Future<void> _onLoadCart(
@@ -36,7 +80,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
         ));
       }
     } catch (e) {
-      emit(CartError(message: e.toString()));
+      emit(CartError(message: _getFriendlyErrorMessage(e)));
     }
   }
   
@@ -126,7 +170,7 @@ class CartBloc extends Bloc<CartEvent, CartState> {
       await cartRepository.clearCart();
       emit(CartEmpty());
     } catch (e) {
-      emit(CartError(message: e.toString()));
+      emit(CartError(message: _getFriendlyErrorMessage(e)));
     }
   }
 }

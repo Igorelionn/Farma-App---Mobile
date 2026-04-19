@@ -1,5 +1,12 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import {
+  validateSyncSecret,
+  validateGetProductUpdatesParams,
+  createErrorResponse,
+  createSuccessResponse,
+  checkRateLimit
+} from '../_shared/validation.ts';
 
 const SYNC_SECRET = Deno.env.get('SYNC_SECRET') || '';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -19,29 +26,39 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const syncSecret = req.headers.get('x-sync-secret');
-    if (!SYNC_SECRET || syncSecret !== SYNC_SECRET) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Rate limiting
+    const rateLimitResponse = checkRateLimit(req, corsHeaders);
+    if (rateLimitResponse) {
+      return rateLimitResponse;
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    // Validar secret
+    const secretValidation = validateSyncSecret(req, SYNC_SECRET);
+    if (!secretValidation.success) {
+      return createErrorResponse(secretValidation.error, 401, corsHeaders);
+    }
+
+    // Validar parâmetros
     const url = new URL(req.url);
-    const since = url.searchParams.get('since');
-    const allProducts = url.searchParams.get('all') === 'true';
+    const paramsValidation = validateGetProductUpdatesParams(url);
+    if (!paramsValidation.success) {
+      return createErrorResponse(paramsValidation.error, 400, corsHeaders);
+    }
+
+    const params = paramsValidation.data!;
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     let query = supabase
       .from('products')
       .select('id, excel_row_id, nome, laboratorio, preco, estoque, codigo_barras, unidade, classificacao_fiscal, imagem_url, disponivel, updated_at, categories(nome)')
-      .order('updated_at', { ascending: false });
+      .order('updated_at', { ascending: false })
+      .limit(1000); // Máximo de 1000 registros
 
-    if (!allProducts && since) {
-      query = query.gt('updated_at', since);
+    if (!params.all && params.since) {
+      query = query.gt('updated_at', params.since);
     }
 
-    if (!allProducts && !since) {
+    if (!params.all && !params.since) {
       const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
       query = query.gt('updated_at', fiveMinAgo);
     }
@@ -63,19 +80,16 @@ Deno.serve(async (req: Request) => {
       updated_at: p.updated_at,
     }));
 
-    return new Response(
-      JSON.stringify({
+    return createSuccessResponse(
+      {
         count: products.length,
         timestamp: new Date().toISOString(),
         products,
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      },
+      corsHeaders
     );
 
   } catch (err) {
-    return new Response(
-      JSON.stringify({ error: err.message || 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return createErrorResponse(err, 500, corsHeaders);
   }
 });

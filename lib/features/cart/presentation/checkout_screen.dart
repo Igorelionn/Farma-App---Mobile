@@ -9,6 +9,7 @@ import '../../../core/widgets/svg_icon.dart';
 import '../../../core/widgets/loading_indicator.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/logger.dart';
 import '../../../data/models/address.dart';
 import '../../../data/repositories/order_repository.dart';
 import '../bloc/cart_bloc.dart';
@@ -1116,11 +1117,11 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        print('Erro detalhado ao processar endereço: $e');
+        AppLogger.error('Erro ao processar endereço', e, null, 'CheckoutScreen');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro ao processar endereço: ${e.toString()}'),
-            duration: const Duration(seconds: 5),
+          const SnackBar(
+            content: Text('Erro ao processar endereço. Tente novamente.'),
+            duration: Duration(seconds: 3),
             backgroundColor: AppColors.error,
           ),
         );

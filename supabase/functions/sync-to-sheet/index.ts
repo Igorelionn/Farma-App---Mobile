@@ -1,5 +1,11 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import {
+  validateSyncSecret,
+  createErrorResponse,
+  createSuccessResponse,
+  checkRateLimit
+} from '../_shared/validation.ts';
 
 const SYNC_SECRET = Deno.env.get('SYNC_SECRET') || '';
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
@@ -8,7 +14,7 @@ const GOOGLE_SHEET_WEBHOOK_URL = Deno.env.get('GOOGLE_SHEET_WEBHOOK_URL') || '';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-sync-secret, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
@@ -19,39 +25,81 @@ interface ProductUpdatePayload {
   old_record?: any;
 }
 
+function validatePayload(body: unknown): { success: boolean; data?: ProductUpdatePayload; error?: string } {
+  if (!body || typeof body !== 'object') {
+    return { success: false, error: 'Invalid request body' };
+  }
+  
+  const payload = body as Record<string, unknown>;
+  
+  if (!payload.type || typeof payload.type !== 'string') {
+    return { success: false, error: 'Missing or invalid type' };
+  }
+  
+  if (!['INSERT', 'UPDATE', 'DELETE'].includes(payload.type as string)) {
+    return { success: false, error: 'Invalid type. Must be INSERT, UPDATE, or DELETE' };
+  }
+  
+  if (!payload.table || typeof payload.table !== 'string') {
+    return { success: false, error: 'Missing or invalid table' };
+  }
+  
+  return { success: true, data: payload as ProductUpdatePayload };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    // Validar autenticação via x-sync-secret header
-    const syncSecret = req.headers.get('x-sync-secret');
-    if (!SYNC_SECRET || syncSecret !== SYNC_SECRET) {
-      console.warn('⚠️ Unauthorized access attempt');
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Rate limiting
+    const rateLimitResponse = checkRateLimit(req, corsHeaders);
+    if (rateLimitResponse) {
+      return rateLimitResponse;
     }
 
-    const payload: ProductUpdatePayload = await req.json();
+    // Validar secret
+    const secretValidation = validateSyncSecret(req, SYNC_SECRET);
+    if (!secretValidation.success) {
+      return createErrorResponse(secretValidation.error, 401, corsHeaders);
+    }
+
+    // Validar payload
+    const body = await req.json();
+    const payloadValidation = validatePayload(body);
+    if (!payloadValidation.success) {
+      return createErrorResponse(payloadValidation.error, 400, corsHeaders);
+    }
+
+    const payload = payloadValidation.data!;
     
     console.log('📦 Received webhook payload:', payload.type, payload.table);
 
     // Ignorar se não for da tabela products
     if (payload.table !== 'products') {
-      return new Response(
-        JSON.stringify({ success: true, message: 'Ignored non-product table' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      return createSuccessResponse(
+        { success: true, message: 'Ignored non-product table' },
+        corsHeaders
       );
     }
 
     if (!GOOGLE_SHEET_WEBHOOK_URL) {
       console.warn('⚠️ GOOGLE_SHEET_WEBHOOK_URL not configured');
-      return new Response(
-        JSON.stringify({ success: false, message: 'Google Sheet webhook not configured' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      // Log como erro quando configuração está faltando
+      const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+      await supabase.from('sync_log').insert({
+        source: 'supabase_to_excel',
+        action: 'config_error',
+        records_affected: 0,
+        status: 'error',
+        error_message: 'GOOGLE_SHEET_WEBHOOK_URL not configured',
+      });
+      
+      return createErrorResponse(
+        'Google Sheet webhook not configured',
+        500,
+        corsHeaders
       );
     }
 
@@ -62,6 +110,10 @@ Deno.serve(async (req: Request) => {
     
     if (payload.type === 'UPDATE' || payload.type === 'INSERT') {
       const record = payload.record;
+      
+      if (!record) {
+        return createErrorResponse('Missing record for UPDATE/INSERT', 400, corsHeaders);
+      }
       
       // Buscar categoria do produto se necessário
       if (record.category_id) {
@@ -99,33 +151,27 @@ Deno.serve(async (req: Request) => {
     }
 
     // Enviar para Google Sheet
-    if (sheetData && GOOGLE_SHEET_WEBHOOK_URL) {
+    if (sheetData) {
       console.log('📤 Sending to Google Sheet:', sheetData.action);
       
-      // Google Apps Script precisa do secret como parâmetro de URL
-      const urlWithSecret = `${GOOGLE_SHEET_WEBHOOK_URL}?secret=${encodeURIComponent(SYNC_SECRET)}`;
-      // NÃO logar a URL completa com o secret em produção
-      
-      const sheetResponse = await fetch(urlWithSecret, {
+      // Enviar secret no header (mais seguro que query string)
+      const sheetResponse = await fetch(GOOGLE_SHEET_WEBHOOK_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-sync-secret': SYNC_SECRET,
         },
         body: JSON.stringify(sheetData),
       });
 
-      const responseText = await sheetResponse.text();
       console.log('📥 Response status:', sheetResponse.status);
 
       if (!sheetResponse.ok) {
         console.error('❌ Google Sheet update failed with status:', sheetResponse.status);
-        // Não logar o corpo completo da resposta que pode conter dados sensíveis
         throw new Error(`Google Sheet update failed with status ${sheetResponse.status}`);
       }
 
       console.log('✅ Google Sheet updated successfully');
-    } else {
-      console.warn('⚠️ Not sending - missing configuration');
     }
 
     // Log da sincronização
@@ -136,9 +182,9 @@ Deno.serve(async (req: Request) => {
       status: 'success',
     });
 
-    return new Response(
-      JSON.stringify({ success: true, synced_to_sheet: true }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    return createSuccessResponse(
+      { success: true, synced_to_sheet: true },
+      corsHeaders
     );
 
   } catch (err) {
@@ -153,10 +199,6 @@ Deno.serve(async (req: Request) => {
       error_message: err instanceof Error ? err.message : 'Unknown error',
     });
 
-    // Não expor detalhes do erro ao cliente
-    return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return createErrorResponse(err, 500, corsHeaders);
   }
 });

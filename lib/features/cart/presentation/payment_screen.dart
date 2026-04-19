@@ -4,11 +4,11 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/widgets/svg_icon.dart';
 import '../../../core/widgets/loading_indicator.dart';
+import '../../../core/utils/logger.dart';
 import '../../../data/models/payment_method.dart';
 import '../../../data/models/address.dart';
 import '../../../data/models/cart_item.dart';
 import '../../../data/repositories/order_repository.dart';
-import '../../../data/repositories/cart_repository.dart';
 import '../../../data/repositories/cart_repository.dart';
 import '../bloc/cart_bloc.dart';
 import '../bloc/cart_event.dart';
@@ -91,6 +91,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
       final orderRepo = context.read<OrderRepository>();
       final cartRepo = context.read<CartRepository>();
 
+      // Validar carrinho antes de criar pedido
+      final isCartValid = await cartRepo.validateCart();
+      if (!isCartValid) {
+        throw Exception('Alguns produtos no carrinho não estão mais disponíveis ou sem estoque');
+      }
+
       // Criar pedido
       final order = await orderRepo.createOrder(
         items: cartState.items,
@@ -123,11 +129,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
     } catch (e) {
       setState(() => _isLoading = false);
       if (mounted) {
-        print('Erro detalhado ao criar pedido: $e');
+        AppLogger.error('Erro ao criar pedido', e, null, 'PaymentScreen');
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro ao criar pedido: ${e.toString()}'),
-            duration: const Duration(seconds: 5),
+          const SnackBar(
+            content: Text('Erro ao criar pedido. Tente novamente.'),
+            duration: Duration(seconds: 3),
             backgroundColor: AppColors.error,
           ),
         );

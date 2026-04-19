@@ -217,7 +217,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _handleSubmit,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF10B981),
+                      backgroundColor: AppColors.navBarBackground,
+                      disabledBackgroundColor: AppColors.navBarBackground.withOpacity(0.6),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
@@ -228,7 +229,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                             width: 24,
                             height: 24,
                             child: CircularProgressIndicator(
-                              color: Colors.white,
+                              color: AppColors.primary,
                               strokeWidth: 2.5,
                             ),
                           )
@@ -237,7 +238,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                             style: GoogleFonts.urbanist(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
-                              color: Colors.white,
+                              color: AppColors.primary,
                             ),
                           ),
                   ),

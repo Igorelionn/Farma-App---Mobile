@@ -48,6 +48,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       return 'Este email já está cadastrado';
     }
     
+    if (errorStr.contains('upload_partial_failure') || 
+        errorStr.contains('row-level security policy')) {
+      return 'Erro ao enviar documentos. Verifique as permissões e tente novamente.';
+    }
+    
     // Retorna mensagem original se for algo específico
     String message = error.toString().replaceAll('Exception: ', '');
     if (!message.toLowerCase().contains('exception') && 

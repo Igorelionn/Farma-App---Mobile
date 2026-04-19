@@ -1,7 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
-import 'package:gotrue/gotrue.dart' show AuthChangeEvent;
+import 'package:gotrue/gotrue.dart' as gotrue show AuthChangeEvent, AuthState;
 import 'core/services/supabase_service.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/bloc/auth_bloc.dart';
@@ -40,22 +41,29 @@ class _AppWithAuthListener extends StatefulWidget {
 
 class _AppWithAuthListenerState extends State<_AppWithAuthListener> {
   final _navigatorKey = GlobalKey<NavigatorState>();
+  StreamSubscription<gotrue.AuthState>? _authStateSubscription;
 
   @override
   void initState() {
     super.initState();
     
     // Listener para deep links de recuperação de senha
-    SupabaseService.client.auth.onAuthStateChange.listen((data) {
+    _authStateSubscription = SupabaseService.client.auth.onAuthStateChange.listen((data) {
       final event = data.event;
       
-      if (event == AuthChangeEvent.passwordRecovery) {
+      if (event == gotrue.AuthChangeEvent.passwordRecovery) {
         // Aguarda um frame para garantir que o navigator está pronto
         Future.delayed(const Duration(milliseconds: 500), () {
           _navigatorKey.currentState?.pushNamed('/reset-password');
         });
       }
     });
+  }
+
+  @override
+  void dispose() {
+    _authStateSubscription?.cancel();
+    super.dispose();
   }
 
   @override

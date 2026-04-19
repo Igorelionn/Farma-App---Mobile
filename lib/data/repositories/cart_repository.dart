@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/cart_item.dart';
 import '../models/product.dart';
+import '../../core/constants/app_constants.dart';
 import '../../core/services/supabase_service.dart';
 import '../../core/constants/app_constants.dart';
 
@@ -88,9 +89,13 @@ class CartRepository {
       subtotal += item.subtotal;
     }
     
-    double shipping = 0;
-    double discount = 0;
-    double total = subtotal - discount;
+    // Calcular frete baseado no subtotal
+    double shipping = subtotal >= AppConstants.freeShippingThreshold 
+        ? 0 
+        : AppConstants.defaultShippingCost;
+    
+    double discount = 0; // Desconto pode ser implementado futuramente
+    double total = subtotal + shipping - discount;
     
     return {
       'subtotal': subtotal,

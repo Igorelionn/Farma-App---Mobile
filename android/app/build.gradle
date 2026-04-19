@@ -50,7 +50,19 @@ android {
 
     buildTypes {
         release {
+            // Signing configuration
             signingConfig signingConfigs.debug
+            
+            // Code obfuscation and optimization
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+        
+        debug {
+            // Debug builds não precisam de obfuscação
+            minifyEnabled false
+            shrinkResources false
         }
     }
 }
