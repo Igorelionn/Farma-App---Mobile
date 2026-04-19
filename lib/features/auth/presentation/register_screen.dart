@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -11,6 +12,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/validators.dart';
+import '../../../data/repositories/auth_repository.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_event.dart';
 import '../bloc/auth_state.dart';
@@ -35,6 +37,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
   int _step = 0;
 
   final _keys = List.generate(_totalSteps, (_) => GlobalKey<FormState>());
+
+  // Estados do botão animado
+  bool _isCheckingDuplicate = false;
+  bool _showDuplicateError = false;
+  String _duplicateErrorMessage = '';
 
   // Etapa 1: Dados da Empresa
   final _empresaCtrl = TextEditingController();
@@ -153,7 +160,94 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  void _next() {
+  void _next() async {
+    // Etapa 1: Validar se CNPJ, email ou telefone já existem
+    if (_step == 0) {
+      if (!_keys[0].currentState!.validate()) return;
+      
+      debugPrint('[RegisterScreen] Iniciando verificação de duplicados...');
+      
+      // Mostrar loading
+      setState(() => _isCheckingDuplicate = true);
+      
+      try {
+        final authRepo = context.read<AuthRepository>();
+        debugPrint('[RegisterScreen] Repository obtido com sucesso');
+        
+        // Verificar CNPJ
+        final cnpj = _cnpjCtrl.text.trim().replaceAll(RegExp(r'\D'), '');
+        debugPrint('[RegisterScreen] Verificando CNPJ: $cnpj');
+        final cnpjExists = await authRepo.checkCnpjExists(cnpj);
+        debugPrint('[RegisterScreen] CNPJ existe? $cnpjExists');
+        
+        if (cnpjExists) {
+          setState(() {
+            _isCheckingDuplicate = false;
+            _showDuplicateError = true;
+            _duplicateErrorMessage = 'CNPJ já cadastrado';
+          });
+          Future.delayed(const Duration(milliseconds: 2500), () {
+            if (mounted) setState(() => _showDuplicateError = false);
+          });
+          return;
+        }
+        
+        // Verificar Email
+        final email = _emailCtrl.text.trim().toLowerCase();
+        debugPrint('[RegisterScreen] Verificando email: $email');
+        final emailExists = await authRepo.checkEmailExists(email);
+        debugPrint('[RegisterScreen] Email existe? $emailExists');
+        
+        if (emailExists) {
+          setState(() {
+            _isCheckingDuplicate = false;
+            _showDuplicateError = true;
+            _duplicateErrorMessage = 'Email já cadastrado';
+          });
+          Future.delayed(const Duration(milliseconds: 2500), () {
+            if (mounted) setState(() => _showDuplicateError = false);
+          });
+          return;
+        }
+        
+        // Verificar Telefone
+        if (_telefoneCtrl.text.trim().isNotEmpty) {
+          final telefone = _telefoneCtrl.text.trim().replaceAll(RegExp(r'\D'), '');
+          debugPrint('[RegisterScreen] Verificando telefone: $telefone');
+          final telefoneExists = await authRepo.checkTelefoneExists(telefone);
+          debugPrint('[RegisterScreen] Telefone existe? $telefoneExists');
+          
+          if (telefoneExists) {
+            setState(() {
+              _isCheckingDuplicate = false;
+              _showDuplicateError = true;
+              _duplicateErrorMessage = 'Telefone já cadastrado';
+            });
+            Future.delayed(const Duration(milliseconds: 2500), () {
+              if (mounted) setState(() => _showDuplicateError = false);
+            });
+            return;
+          }
+        }
+        
+        debugPrint('[RegisterScreen] Todas as verificações passaram, avançando...');
+        setState(() => _isCheckingDuplicate = false);
+      } catch (e, stackTrace) {
+        debugPrint('[RegisterScreen] Erro ao verificar duplicados: $e');
+        debugPrint('[RegisterScreen] StackTrace: $stackTrace');
+        setState(() => _isCheckingDuplicate = false);
+        // Em caso de erro na verificação, NÃO permite continuar
+        setState(() {
+          _showDuplicateError = true;
+          _duplicateErrorMessage = 'Erro ao verificar dados';
+        });
+        Future.delayed(const Duration(milliseconds: 2500), () {
+          if (mounted) setState(() => _showDuplicateError = false);
+        });
+        return;
+      }
+    }
+    
     // Etapa 3: texto validado pelo Form + upload do Alvará
     if (_step == 2) {
       final formOk = _keys[2].currentState!.validate();
@@ -168,7 +262,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       setState(() => _step4Error =
           !uploadOk ? 'Envie a Licença Sanitária e o CRT' : null);
       if (!formOk || !uploadOk) return;
-    } else {
+    } else if (_step != 0) {
       if (!_keys[_step].currentState!.validate()) return;
     }
 
@@ -506,8 +600,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             }
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: _kEmerald,
-                            overlayColor: _kEmerald,
+                            backgroundColor: AppColors.navBarBackground,
+                            overlayColor: AppColors.navBarBackground,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -520,7 +614,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             style: GoogleFonts.urbanist(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
-                              color: Colors.white,
+                              color: AppColors.primary,
                             ),
                           ),
                         ),
@@ -976,49 +1070,60 @@ class _RegisterScreenState extends State<RegisterScreen> {
       buildWhen: (p, c) => (p is AuthLoading) != (c is AuthLoading),
       builder: (context, state) {
         final loading = state is AuthLoading;
+        final isButtonLoading = loading || _isCheckingDuplicate;
+        
         return Padding(
           padding: const EdgeInsets.fromLTRB(28, 6, 28, 22),
           child: SizedBox(
             width: double.infinity,
             height: 54,
-            child: Material(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              elevation: 0,
-              child: InkWell(
-                onTap: loading ? null : _next,
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 400),
+              curve: Curves.easeInOut,
+              decoration: BoxDecoration(
+                color: _showDuplicateError 
+                    ? AppColors.error 
+                    : AppColors.navBarBackground,
                 borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: const Color(0xFFE6E7EA)),
-                  ),
-                  child: Center(
-                    child: loading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                    _kEmerald)))
-                        : Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                isLast ? 'Solicitar Cadastro' : 'Continuar',
-                                style: GoogleFonts.urbanist(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                  color: _kDark,
-                                  letterSpacing: 0.2,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              const Icon(Icons.arrow_forward_rounded,
-                                  size: 20, color: _kEmerald),
-                            ],
+              ),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: (isButtonLoading || _showDuplicateError) ? null : _next,
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    alignment: Alignment.center,
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 400),
+                      switchInCurve: Curves.easeInOut,
+                      switchOutCurve: Curves.easeInOut,
+                      transitionBuilder: (child, animation) {
+                        if (child.key == const ValueKey('error-message')) {
+                          return SlideTransition(
+                            position: Tween<Offset>(
+                              begin: const Offset(0, 0.3),
+                              end: Offset.zero,
+                            ).animate(CurvedAnimation(
+                              parent: animation,
+                              curve: Curves.easeOutCubic,
+                            )),
+                            child: FadeTransition(
+                              opacity: animation,
+                              child: child,
+                            ),
+                          );
+                        }
+                        return FadeTransition(
+                          opacity: animation,
+                          child: ScaleTransition(
+                            scale: Tween<double>(begin: 0.8, end: 1.0)
+                                .animate(animation),
+                            child: child,
                           ),
+                        );
+                      },
+                      child: _buildButtonContent(isButtonLoading, _showDuplicateError, isLast),
+                    ),
                   ),
                 ),
               ),
@@ -1026,6 +1131,61 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildButtonContent(bool loading, bool showError, bool isLast) {
+    if (loading) {
+      return const SizedBox(
+        key: ValueKey('loading'),
+        width: 20,
+        height: 20,
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+        ),
+      );
+    }
+
+    if (_duplicateErrorMessage.isNotEmpty && showError) {
+      return Text(
+        key: const ValueKey('error-message'),
+        _duplicateErrorMessage,
+        style: GoogleFonts.urbanist(
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+          color: Colors.white,
+          letterSpacing: 0.2,
+        ),
+      );
+    }
+
+    if (showError) {
+      return const Icon(
+        key: ValueKey('error-icon'),
+        Icons.close_rounded,
+        color: Colors.white,
+        size: 28,
+      );
+    }
+
+    return Row(
+      key: const ValueKey('normal'),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          isLast ? 'Solicitar Cadastro' : 'Continuar',
+          style: GoogleFonts.urbanist(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: AppColors.primary,
+            letterSpacing: 0.2,
+          ),
+        ),
+        const SizedBox(width: 8),
+        const Icon(Icons.arrow_forward_rounded,
+            size: 20, color: AppColors.primary),
+      ],
     );
   }
 
@@ -1151,36 +1311,11 @@ class _TipoOption extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
             color: selected ? _kEmerald : const Color(0xFFE5E7EB),
-            width: 1,
+            width: selected ? 1.5 : 1,
           ),
         ),
         child: Row(
           children: [
-            Container(
-              width: 18,
-              height: 18,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: selected ? _kEmerald : const Color(0xFFD1D5DB),
-                  width: 1.5,
-                ),
-                color: Colors.white,
-              ),
-              child: selected
-                  ? Center(
-                      child: Container(
-                        width: 10,
-                        height: 10,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: _kEmerald,
-                        ),
-                      ),
-                    )
-                  : null,
-            ),
-            const SizedBox(width: 12),
             Text(
               label,
               style: GoogleFonts.urbanist(
@@ -1441,15 +1576,15 @@ class _DocUploadField extends StatelessWidget {
               child: SizedBox(
                 width: double.infinity,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 22),
+                  padding: const EdgeInsets.symmetric(vertical: 32),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Icon(Icons.upload_file_outlined,
-                          size: 24, color: _kHint),
-                      const SizedBox(height: 8),
+                          size: 28, color: _kHint),
+                      const SizedBox(height: 10),
                       Text('Anexar documento', style: _tsAction),
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 4),
                       Text(
                           'PDF, JPG ou PNG · até $maxFiles foto${maxFiles > 1 ? 's' : ''}',
                           style: _tsHint),

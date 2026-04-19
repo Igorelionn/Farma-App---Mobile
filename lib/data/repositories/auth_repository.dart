@@ -66,10 +66,12 @@ class AuthRepository {
     String? responsavelCpf,
     String? responsavelCrf,
   }) async {
-    final response = await _client.auth.signUp(
-      email: email,
-      password: password,
-      data: {
+    debugPrint('[AuthRepository] Iniciando cadastro para email: $email');
+    debugPrint('[AuthRepository] CNPJ: $cnpj');
+    debugPrint('[AuthRepository] Telefone: $telefone');
+    
+    try {
+      final userData = {
         'nome': nome,
         'empresa': empresa,
         'cnpj': cnpj,
@@ -89,26 +91,63 @@ class AuthRepository {
         'responsavel_nome': responsavelNome,
         'responsavel_cpf': responsavelCpf,
         'responsavel_crf': responsavelCrf,
-      },
-    );
+      };
 
-    if (response.user == null) {
-      throw Exception('Erro ao criar conta');
+      debugPrint('[AuthRepository] User data: $userData');
+
+      final response = await _client.auth.signUp(
+        email: email,
+        password: password,
+        data: userData,
+      );
+
+      debugPrint('[AuthRepository] SignUp concluído. User ID: ${response.user?.id}');
+      debugPrint('[AuthRepository] Session: ${response.session?.accessToken != null ? "Ativa" : "Inativa"}');
+
+      if (response.user == null) {
+        debugPrint('[AuthRepository] Erro: response.user é null');
+        throw Exception('Erro ao criar conta');
+      }
+
+      // Se a sessão não foi criada automaticamente, aguarda um pouco
+      // para garantir que está tudo sincronizado
+      if (response.session == null || response.session!.accessToken.isEmpty) {
+        debugPrint('[AuthRepository] Aguardando sincronização da sessão...');
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
+      
+      // Verifica sessão atual antes do upload
+      final currentSession = _client.auth.currentSession;
+      debugPrint('[AuthRepository] Sessão atual: ${currentSession?.user.id}');
+      debugPrint('[AuthRepository] Access token presente: ${currentSession?.accessToken != null}');
+
+      // Upload de documentos após criação do usuário (sessão autenticada)
+      if (documents != null && documents.isNotEmpty) {
+        debugPrint('[AuthRepository] Iniciando upload de ${documents.length} tipos de documentos');
+        await _uploadDocuments(response.user!.id, documents);
+      } else {
+        debugPrint('[AuthRepository] Sem documentos para upload');
+      }
+
+      // Profile is created automatically via database trigger
+      debugPrint('[AuthRepository] Buscando usuário atual...');
+      return await getCurrentUser();
+    } catch (e, stackTrace) {
+      debugPrint('[AuthRepository] ERRO no cadastro: $e');
+      debugPrint('[AuthRepository] Tipo do erro: ${e.runtimeType}');
+      if (e.toString().contains('Database error')) {
+        debugPrint('[AuthRepository] ERRO DE BANCO! Possível constraint violation ou trigger failure');
+      }
+      debugPrint('[AuthRepository] StackTrace: $stackTrace');
+      rethrow;
     }
-
-    // Upload de documentos após criação do usuário (sessão autenticada)
-    if (documents != null && documents.isNotEmpty) {
-      await _uploadDocuments(response.user!.id, documents);
-    }
-
-    // Profile is created automatically via database trigger
-    return await getCurrentUser();
   }
 
   Future<void> _uploadDocuments(
     String userId,
     Map<String, List<(String, Uint8List)>> documents,
   ) async {
+    debugPrint('[AuthRepository] Iniciando upload de documentos para userId: $userId');
     final storage = _client.storage;
     final docPaths = <String, String>{};
     final uploadErrors = <String>[];
@@ -118,12 +157,15 @@ class AuthRepository {
       final fileList = entry.value;
       final paths = <String>[];
 
+      debugPrint('[AuthRepository] Uploading $fieldName (${fileList.length} arquivos)');
+
       for (int i = 0; i < fileList.length; i++) {
         final (fileName, bytes) = fileList[i];
         final ext = _sanitizeExtension(fileName);
         final path = '$userId/${fieldName}_$i.$ext';
 
         try {
+          debugPrint('[AuthRepository] Tentando upload: $path (${bytes.length} bytes)');
           await storage.from('documents').uploadBinary(
                 path,
                 bytes,
@@ -132,8 +174,7 @@ class AuthRepository {
                   upsert: true,
                 ),
               );
-          // Armazena o PATH do storage (não URL pública).
-          // URLs assinadas são geradas sob demanda via getDocumentSignedUrls().
+          debugPrint('[AuthRepository] Upload bem-sucedido: $path');
           paths.add(path);
         } catch (e) {
           debugPrint('[AuthRepository] Falha no upload de $fieldName[$i]: $e');
@@ -142,22 +183,27 @@ class AuthRepository {
       }
 
       if (paths.isNotEmpty) {
-        // Prefixo distingue paths de URLs legadas já salvas no banco.
         docPaths[fieldName] = '$_storagePrefix${paths.join('|')}';
       }
     }
 
+    debugPrint('[AuthRepository] Total de paths salvos: ${docPaths.length}');
+    debugPrint('[AuthRepository] Erros de upload: ${uploadErrors.length}');
+
     if (docPaths.isNotEmpty) {
       final updates = <String, dynamic>{};
       docPaths.forEach((key, val) => updates[key] = val);
+      debugPrint('[AuthRepository] Atualizando profiles com: $updates');
       await _client.from('profiles').update(updates).eq('id', userId);
     }
 
     if (uploadErrors.isNotEmpty) {
-      throw Exception(
-        'UPLOAD_PARTIAL_FAILURE:${uploadErrors.join(',')}',
-      );
+      final errorMsg = 'UPLOAD_PARTIAL_FAILURE:${uploadErrors.join(',')}';
+      debugPrint('[AuthRepository] Lançando exceção: $errorMsg');
+      throw Exception(errorMsg);
     }
+    
+    debugPrint('[AuthRepository] Upload de documentos concluído com sucesso');
   }
 
   /// Gera URLs assinadas (expiram em 1 hora) para os documentos de um usuário.
@@ -291,13 +337,44 @@ class AuthRepository {
 
   Future<bool> checkEmailExists(String email) async {
     try {
+      debugPrint('[AuthRepository] Verificando email: $email');
+      
       final response = await _client.rpc(
         'check_email_exists',
         params: {'p_email': email},
       );
+      
+      debugPrint('[AuthRepository] Resposta da verificação de email: $response');
+      
       return response == true;
     } catch (e) {
       debugPrint('[AuthRepository] Erro ao verificar email: $e');
+      return false;
+    }
+  }
+
+  Future<bool> checkCnpjExists(String cnpj) async {
+    try {
+      final response = await _client.rpc(
+        'check_cnpj_exists',
+        params: {'p_cnpj': cnpj},
+      );
+      return response == true;
+    } catch (e) {
+      debugPrint('[AuthRepository] Erro ao verificar CNPJ: $e');
+      return false;
+    }
+  }
+
+  Future<bool> checkTelefoneExists(String telefone) async {
+    try {
+      final response = await _client.rpc(
+        'check_telefone_exists',
+        params: {'p_telefone': telefone},
+      );
+      return response == true;
+    } catch (e) {
+      debugPrint('[AuthRepository] Erro ao verificar telefone: $e');
       return false;
     }
   }

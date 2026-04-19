@@ -52,7 +52,7 @@ export default function LoginPage() {
   }
 
   const btnCls: Record<BtnState, string> = {
-    'idle':       'border-gray-300 text-gray-700 hover:border-[#0CF7D8] hover:bg-[#0CF7D8] hover:text-black active:border-[#0CF7D8] active:bg-[#0CF7D8] active:text-black',
+    'idle':       'border-gray-300 text-gray-700 hover:border-[#0CF7D8] hover:bg-[#0CF7D8] hover:text-black active:border-[#0CF7D8] active:bg-[#0CF7D8] active:text-black cursor-pointer',
     'loading':    'border-gray-300 text-gray-500 cursor-not-allowed',
     'error-x':    'border-red-500 bg-red-500 text-white cursor-not-allowed',
     'error-text': 'border-red-500 bg-red-500 text-white cursor-not-allowed',

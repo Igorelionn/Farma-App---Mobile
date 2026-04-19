@@ -151,7 +151,7 @@ class _RegisterSuccessScreenState extends State<RegisterSuccessScreen>
                       width: double.infinity,
                       height: 50,
                       child: Material(
-                        color: const Color(0xFF10B981),
+                        color: AppColors.navBarBackground,
                         borderRadius: BorderRadius.circular(14),
                         child: InkWell(
                           onTap: () => Navigator.of(context)
@@ -163,7 +163,7 @@ class _RegisterSuccessScreenState extends State<RegisterSuccessScreen>
                               style: GoogleFonts.urbanist(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.white,
+                                color: AppColors.primary,
                                 letterSpacing: 0.3,
                               ),
                             ),
