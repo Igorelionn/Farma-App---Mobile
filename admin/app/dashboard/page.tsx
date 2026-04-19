@@ -74,6 +74,7 @@ export default function DashboardPage() {
         { data: chartOrders },
         { data: pendingProfiles },
         { data: orderItemsRaw },
+        { data: cancelledOrderIds },
       ] = await Promise.all([
         supabase.from('profiles').select('status, created_at').eq('role', 'customer'),
         supabase.from('orders').select('total').neq('status', 'cancelled'),
@@ -82,11 +83,13 @@ export default function DashboardPage() {
         supabase.from('profiles').select('status, created_at').eq('role', 'customer').lt('created_at', lastMonthEnd),
         supabase.from('orders').select('total, created_at').neq('status', 'cancelled').gte('created_at', sixMonthsAgo),
         supabase.from('profiles').select('empresa, nome, email, created_at').eq('role', 'customer').eq('status', 'pending').order('created_at', { ascending: false }).limit(5),
-        supabase.from('order_items').select('product_name, quantity, orders!inner(status)'),
+        supabase.from('order_items').select('product_name, quantity, order_id'),
+        supabase.from('orders').select('id').eq('status', 'cancelled'),
       ])
 
       // Filtra apenas itens de pedidos não cancelados
-      const orderItems = (orderItemsRaw ?? []).filter((item: any) => item.orders?.status !== 'cancelled')
+      const cancelledIds = new Set((cancelledOrderIds ?? []).map((o: any) => o.id))
+      const orderItems = (orderItemsRaw ?? []).filter((item: any) => !cancelledIds.has(item.order_id))
 
       const activeClients          = (allCustomers ?? []).filter(p => p.status === 'approved').length
       const pendingClients         = (allCustomers ?? []).filter(p => p.status === 'pending').length
