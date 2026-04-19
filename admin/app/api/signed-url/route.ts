@@ -31,8 +31,11 @@ export async function POST(request: NextRequest) {
   const { data: { user }, error: authError } = await supabase.auth.getUser()
 
   if (authError || !user) {
+    console.error('[signed-url] Erro de autenticação:', authError)
     return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
   }
+
+  console.log('[signed-url] Usuário autenticado:', user.id)
 
   // Verifica role de admin via service role (sem RLS)
   const adminClient = createAdminClient()
@@ -42,12 +45,17 @@ export async function POST(request: NextRequest) {
     .eq('id', user.id)
     .single()
 
+  console.log('[signed-url] Profile do usuário:', profile)
+
   if (profile?.role !== 'admin') {
+    console.error('[signed-url] Usuário não é admin:', profile?.role)
     return NextResponse.json({ error: 'Acesso negado' }, { status: 403 })
   }
 
   const body = await request.json()
   const { rawValue } = body as { rawValue: string }
+
+  console.log('[signed-url] rawValue recebido:', rawValue)
 
   if (!rawValue || typeof rawValue !== 'string') {
     return NextResponse.json({ error: 'Parâmetro inválido' }, { status: 400 })
@@ -56,6 +64,7 @@ export async function POST(request: NextRequest) {
   // Formato legado: URLs já completas → retorna como está
   if (!rawValue.startsWith(STORAGE_PREFIX)) {
     const urls = rawValue.split('|').filter(Boolean)
+    console.log('[signed-url] Formato legado detectado, retornando URLs:', urls)
     return NextResponse.json({ urls })
   }
 
@@ -63,17 +72,22 @@ export async function POST(request: NextRequest) {
   const paths = rawValue.substring(STORAGE_PREFIX.length).split('|').filter(Boolean)
   const signedUrls: string[] = []
 
+  console.log('[signed-url] Processando paths:', paths)
+
   for (const path of paths) {
+    console.log('[signed-url] Tentando gerar URL assinada para:', path)
     const { data, error } = await adminClient.storage
       .from('documents')
       .createSignedUrl(path, SIGNED_URL_EXPIRY)
 
     if (data?.signedUrl) {
+      console.log('[signed-url] URL assinada gerada com sucesso:', data.signedUrl)
       signedUrls.push(data.signedUrl)
     } else {
       console.error('[signed-url] Falha ao gerar URL para', path, error)
     }
   }
 
+  console.log('[signed-url] Total de URLs geradas:', signedUrls.length)
   return NextResponse.json({ urls: signedUrls })
 }
