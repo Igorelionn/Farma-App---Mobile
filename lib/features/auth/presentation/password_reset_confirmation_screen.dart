@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_colors.dart';
 
 class PasswordResetConfirmationScreen extends StatefulWidget {
@@ -143,25 +144,87 @@ class _PasswordResetConfirmationScreenState
                   const SizedBox(height: 14),
                   _buildInstruction('O link expira em 24 horas'),
                   const Spacer(),
+                  // Botão: Abrir Email
                   SizedBox(
                     width: double.infinity,
                     height: 50,
                     child: Material(
-                      color: const Color(0xFF10B981),
+                      color: AppColors.navBarBackground,
                       borderRadius: BorderRadius.circular(14),
                       child: InkWell(
-                        onTap: () => Navigator.of(context).pop(),
+                        onTap: () async {
+                          // Abrir app do Gmail
+                          try {
+                            final Uri gmailAppUri = Uri.parse('googlegmail://');
+                            if (await canLaunchUrl(gmailAppUri)) {
+                              await launchUrl(gmailAppUri);
+                            } else {
+                              // Fallback para qualquer app de email
+                              final Uri emailUri = Uri(
+                                scheme: 'mailto',
+                                path: widget.email,
+                              );
+                              await launchUrl(emailUri, mode: LaunchMode.externalApplication);
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Não foi possível abrir o app de email',
+                                    style: GoogleFonts.urbanist(fontWeight: FontWeight.w600),
+                                  ),
+                                  backgroundColor: AppColors.error,
+                                ),
+                              );
+                            }
+                          }
+                        },
                         borderRadius: BorderRadius.circular(14),
                         child: Center(
-                          child: Text(
-                            'Voltar',
-                            style: GoogleFonts.urbanist(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                              letterSpacing: 0.3,
-                            ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.email_outlined,
+                                color: AppColors.primary,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Abrir Email',
+                                style: GoogleFonts.urbanist(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primary,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                            ],
                           ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  // Botão: Voltar (texto simples)
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: TextButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      child: Text(
+                        'Voltar',
+                        style: GoogleFonts.urbanist(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.navBarBackground,
+                          letterSpacing: 0.3,
                         ),
                       ),
                     ),
