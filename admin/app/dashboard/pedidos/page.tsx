@@ -28,6 +28,7 @@ export default function PedidosPage() {
     const { data, error } = await supabase
       .from('orders')
       .select('*, profiles(empresa, nome, email, telefone, endereco, numero, cidade, estado), order_items(id, quantity, unit_price, products(nome))')
+      .neq('status', 'cancelled')
       .order('created_at', { ascending: false })
     if (!error) setOrders(data ?? [])
     setLoading(false)

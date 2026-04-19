@@ -73,17 +73,20 @@ export default function DashboardPage() {
         { data: lastMonthCustomers },
         { data: chartOrders },
         { data: pendingProfiles },
-        { data: orderItems },
+        { data: orderItemsRaw },
       ] = await Promise.all([
         supabase.from('profiles').select('status, created_at').eq('role', 'customer'),
-        supabase.from('orders').select('total'),
-        supabase.from('orders').select('total').gte('created_at', firstOfMonth),
-        supabase.from('orders').select('total').gte('created_at', lastMonthStart).lt('created_at', lastMonthEnd),
+        supabase.from('orders').select('total').neq('status', 'cancelled'),
+        supabase.from('orders').select('total').neq('status', 'cancelled').gte('created_at', firstOfMonth),
+        supabase.from('orders').select('total').neq('status', 'cancelled').gte('created_at', lastMonthStart).lt('created_at', lastMonthEnd),
         supabase.from('profiles').select('status, created_at').eq('role', 'customer').lt('created_at', lastMonthEnd),
-        supabase.from('orders').select('total, created_at').gte('created_at', sixMonthsAgo),
+        supabase.from('orders').select('total, created_at').neq('status', 'cancelled').gte('created_at', sixMonthsAgo),
         supabase.from('profiles').select('empresa, nome, email, created_at').eq('role', 'customer').eq('status', 'pending').order('created_at', { ascending: false }).limit(5),
-        supabase.from('order_items').select('product_name, quantity'),
+        supabase.from('order_items').select('product_name, quantity, orders!inner(status)'),
       ])
+
+      // Filtra apenas itens de pedidos não cancelados
+      const orderItems = (orderItemsRaw ?? []).filter((item: any) => item.orders?.status !== 'cancelled')
 
       const activeClients          = (allCustomers ?? []).filter(p => p.status === 'approved').length
       const pendingClients         = (allCustomers ?? []).filter(p => p.status === 'pending').length
