@@ -54,9 +54,19 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
+    // Se clicar no ícone do carrinho (índice 1), abre a tela completa
+    if (index == 1) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const CartScreen(),
+        ),
+      );
+    } else {
+      setState(() {
+        _selectedIndex = index;
+      });
+    }
   }
 
   void _showCartNotification(String productName) {
@@ -198,10 +208,12 @@ class _HomeScreenState extends State<HomeScreen> {
                           final itemCount = cartState is CartLoaded ? cartState.itemCount : 0;
                           return GestureDetector(
                             onTap: () {
-                              // Navega para a aba da cesta no IndexedStack
-                              setState(() {
-                                _selectedIndex = 1;
-                              });
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const CartScreen(),
+                                ),
+                              );
                             },
                             child: SizedBox(
                               width: 42,
