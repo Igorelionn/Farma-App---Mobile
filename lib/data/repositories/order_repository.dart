@@ -44,6 +44,7 @@ class OrderRepository {
     
     return (response as List)
         .map((json) => PaymentMethod.fromJson(json as Map<String, dynamic>))
+        .where((method) => method.type != PaymentType.accountCredit) // Filtra "Saldo da Conta"
         .toList();
   }
   
@@ -58,38 +59,33 @@ class OrderRepository {
     final now = DateTime.now();
     final orderNumber = 'PED${now.millisecondsSinceEpoch}';
 
-    final orderResponse = await _client.from('orders').insert({
-      'number': orderNumber,
-      'user_id': _userId,
-      'status': 'pending',
-      'subtotal': totals['subtotal'],
-      'shipping': totals['shipping'],
-      'discount': totals['discount'],
-      'total': totals['total'],
-      'address_id': address.id,
-      'payment_method_id': paymentMethod.id,
-      'estimated_delivery': now.add(const Duration(days: 3)).toIso8601String(),
-    }).select().single();
-
-    final orderId = orderResponse['id'] as String;
-
-    final orderItems = items.map((item) => {
-      'order_id': orderId,
+    // Preparar itens para a RPC
+    final itemsJson = items.map((item) => {
       'product_id': item.productId,
       'quantity': item.quantity,
       'unit_price': item.product?.precoFinal ?? 0,
       'subtotal': item.subtotal,
     }).toList();
 
-    await _client.from('order_items').insert(orderItems);
-
-    await _client.from('order_status_history').insert({
-      'order_id': orderId,
-      'status': 'pending',
-      'description': 'Pedido realizado',
+    // Usar RPC atômico para criar pedido + itens + histórico em uma transação
+    final orderId = await _client.rpc('create_order_atomic', params: {
+      'p_order_number': orderNumber,
+      'p_user_id': _userId,
+      'p_address_id': address.id,
+      'p_payment_method_id': paymentMethod.id,
+      'p_subtotal': totals['subtotal'],
+      'p_shipping': totals['shipping'],
+      'p_discount': totals['discount'],
+      'p_total': totals['total'],
+      'p_notes': null,
+      'p_items': itemsJson,
     });
+
+    // Buscar pedido completo criado
+    final order = await getOrderById(orderId);
+    if (order == null) throw Exception('Erro ao buscar pedido criado');
     
-    return Order.fromJson(orderResponse);
+    return order;
   }
   
   Future<List<Order>> getOrders() async {
