@@ -122,10 +122,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      key: _scaffoldKey,
-      backgroundColor: Colors.white,
-      appBar: PreferredSize(
+    return BlocListener<AuthBloc, AuthState>(
+      listener: (context, state) {
+        // Redireciona para login após logout
+        if (state is AuthUnauthenticated) {
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            '/login',
+            (route) => false,
+          );
+        }
+      },
+      child: Scaffold(
+        key: _scaffoldKey,
+        backgroundColor: Colors.white,
+        appBar: PreferredSize(
         preferredSize: const Size.fromHeight(100),
         child: Container(
           color: Colors.white,
@@ -188,12 +198,10 @@ class _HomeScreenState extends State<HomeScreen> {
                           final itemCount = cartState is CartLoaded ? cartState.itemCount : 0;
                           return GestureDetector(
                             onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const CartScreen(),
-                                ),
-                              );
+                              // Navega para a aba da cesta no IndexedStack
+                              setState(() {
+                                _selectedIndex = 1;
+                              });
                             },
                             child: SizedBox(
                               width: 42,
@@ -324,6 +332,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     ),
+      ),
     );
   }
 
