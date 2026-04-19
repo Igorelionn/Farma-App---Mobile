@@ -75,17 +75,12 @@ export async function POST(request: NextRequest) {
   console.log('[signed-url] Processando paths:', paths)
 
   for (const path of paths) {
-    console.log('[signed-url] Tentando gerar URL assinada para:', path)
-    const { data, error } = await adminClient.storage
-      .from('documents')
-      .createSignedUrl(path, SIGNED_URL_EXPIRY)
-
-    if (data?.signedUrl) {
-      console.log('[signed-url] URL assinada gerada com sucesso:', data.signedUrl)
-      signedUrls.push(data.signedUrl)
-    } else {
-      console.error('[signed-url] Falha ao gerar URL para', path, error)
-    }
+    console.log('[signed-url] Gerando URL para:', path)
+    
+    // Usa o endpoint interno que serve os arquivos diretamente
+    const internalUrl = `/api/document/${path}`
+    signedUrls.push(internalUrl)
+    console.log('[signed-url] URL gerada:', internalUrl)
   }
 
   console.log('[signed-url] Total de URLs geradas:', signedUrls.length)
