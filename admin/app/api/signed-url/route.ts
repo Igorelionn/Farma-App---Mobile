@@ -2,11 +2,19 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { createAdminClient } from '@/lib/supabase-server'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 const STORAGE_PREFIX = 'storage:'
 const SIGNED_URL_EXPIRY = 3600 // 1 hora
 
 export async function POST(request: NextRequest) {
+  // Rate limiting por IP
+  const ip = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
+  if (!checkRateLimit(`signed-url:${ip}`, 100, 60000)) { // 100 requisições por minuto
+    console.error('[signed-url] Rate limit excedido para IP:', ip)
+    return NextResponse.json({ error: 'Muitas requisições' }, { status: 429 })
+  }
+
   try {
     const cookieStore = await cookies()
 
