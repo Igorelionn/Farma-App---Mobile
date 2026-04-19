@@ -342,29 +342,44 @@ function Field({ label, value }: { label: string; value?: string | null }) {
 function DocLinks({ label, urls }: { label: string; urls?: string | null }): JSX.Element {
   const [links, setLinks] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!urls) { setLinks([]); setLoading(false); return }
     let cancelled = false
     async function resolve() {
       setLoading(true)
+      setError(null)
       try {
+        console.log('[DocLinks] Buscando URLs para:', label, 'rawValue:', urls)
         const res = await fetch('/api/signed-url', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ rawValue: urls }),
         })
+        
+        if (!res.ok) {
+          const errorText = await res.text()
+          console.error('[DocLinks] Erro HTTP:', res.status, errorText)
+          throw new Error(`HTTP ${res.status}: ${errorText}`)
+        }
+        
         const data = await res.json()
+        console.log('[DocLinks] URLs recebidas:', data)
         if (!cancelled) setLinks(data.urls ?? [])
-      } catch {
-        if (!cancelled) setLinks([])
+      } catch (err) {
+        console.error('[DocLinks] Erro ao buscar URLs:', err)
+        if (!cancelled) {
+          setLinks([])
+          setError(err instanceof Error ? err.message : 'Erro desconhecido')
+        }
       } finally {
         if (!cancelled) setLoading(false)
       }
     }
     resolve()
     return () => { cancelled = true }
-  }, [urls])
+  }, [urls, label])
 
   return (
     <div className="flex items-center justify-between py-3 border-b border-gray-50 last:border-b-0">
@@ -378,6 +393,8 @@ function DocLinks({ label, urls }: { label: string; urls?: string | null }): JSX
       </div>
       {loading ? (
         <div className="w-3.5 h-3.5 border-[1.5px] border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+      ) : error ? (
+        <span className="text-xs text-red-400 italic" title={error}>Erro ao carregar</span>
       ) : links.length === 0 ? (
         <span className="text-xs text-gray-300 italic">Não enviado</span>
       ) : (
